@@ -3,23 +3,10 @@
 import os
 import tempfile
 
-# Backend speciifc constants
-RENDER_MODELS = {
-    "default": "gpt-3.5-turbo",
-    "legacy-paid": "text-davinci-002-render-paid",
-    "legacy-free": "text-davinci-002-render",
-    "gpt4": "gpt-4"
-}
+PROVIDER_PREFIX = 'provider_'
 
-OPENAPI_CHAT_RENDER_MODELS = {
-    "default": "gpt-3.5-turbo",
-    "turbo": "gpt-3.5-turbo",
-    "turbo-0301": "gpt-3.5-turbo-0301",
-    "gpt4": "gpt-4",
-    "gpt4-0314": "gpt-4-0314",
-    "gpt4-32k": "gpt-4-32k",
-    "gpt4-32k-0314": "gpt-4-32k-0314",
-}
+# Backend speciifc constants
+API_BACKEND_DEFAULT_MODEL = "gpt-3.5-turbo"
 
 
 SYSTEM_MESSAGE_DEFAULT = "You are a mortgage advisor advising mortgage brokers and you are  representing Precise Mortgages, a UK-based mortgage provider. As a representative for Precise Mortgages, your goal is to assist brokers in selecting the best mortgage products for their clients. You have access to the Precise Mortgages' criteria in the following file and you will only refer to this file:('/ocg.csv').if it says 'we may consider x' add that as a caveat instead of the main criteria. If brokers ask about a specific criteria point, you will provide them with the full criteria information related to that point.If you don't know the answer please refer to a live agent and do not fill the gaps with outside knowledge. This document is your only source of information.When the page has a title with a keyword please refer to that as the criteria for that keyword.."
@@ -31,50 +18,31 @@ OPENAPI_MAX_TOKENS = 4096
 OPENAPI_MIN_SUBMISSION_TOKENS = 1
 OPENAPI_DEFAULT_MAX_SUBMISSION_TOKENS = 4000
 
-OPENAPI_DEFAULT_TEMPERATURE = 0.9
-OPENAPI_TEMPERATURE_MIN = 0
-OPENAPI_TEMPERATURE_MAX = 2
-
-OPENAPI_DEFAULT_TOP_P = 1
-OPENAPI_TOP_P_MIN = 0
-OPENAPI_TOP_P_MAX = 1
-
-OPENAPI_DEFAULT_PRESENCE_PENALTY = 0.6
-OPENAPI_PRESENCE_PENALTY_MIN = -2
-OPENAPI_PRESENCE_PENALTY_MAX = 2
-
-OPENAPI_DEFAULT_FREQUENCY_PENALTY = 0
-OPENAPI_FREQUENCY_PENALTY_MIN = -2
-OPENAPI_FREQUENCY_PENALTY_MAX = 2
-
 # Config specific constants.
 DEFAULT_PROFILE = 'default'
 DEFAULT_CONFIG_DIR = 'chatgpt-wrapper'
 DEFAULT_DATABASE_BASENAME = 'storage'
 CONFIG_PROFILES_DIR = 'profiles'
 DEFAULT_CONFIG = {
-    'backend': 'chatgpt-api',
+    'backend': 'api',
     'shell': {
-        'prompt_prefix': '($TEMPERATURE/$TOP_P/$PRESENCE_PENALTY/$FREQUENCY_PENALTY/$MAX_SUBMISSION_TOKENS/$CURRENT_CONVERSATION_TOKENS)$NEWLINE$USER@$MODEL',
+        'prompt_prefix': '($TEMPERATURE/$MAX_SUBMISSION_TOKENS/$CURRENT_CONVERSATION_TOKENS): $SYSTEM_MESSAGE_ALIAS$NEWLINE$USER@$PRESET_OR_MODEL',
+        'history_file': '%s%srepl_history.log' % (tempfile.gettempdir(), os.path.sep),
     },
     'database': None,
     'browser': {
         'provider': 'firefox',
         'debug': False,
+        'plugins': [],
+    },
+    'model': {
+        'default_preset': None,
+        'streaming': False,
+        'system_message': {
+            'programmer': SYSTEM_MESSAGE_ADVISOR,
+        },
     },
     'chat': {
-        'model': 'default',
-        'model_customizations': {
-            'temperature': OPENAPI_DEFAULT_TEMPERATURE,
-            'top_p': OPENAPI_DEFAULT_TOP_P,
-            'presence_penalty': OPENAPI_DEFAULT_PRESENCE_PENALTY,
-            'frequency_penalty': OPENAPI_DEFAULT_FREQUENCY_PENALTY,
-            'max_submission_tokens': OPENAPI_DEFAULT_MAX_SUBMISSION_TOKENS,
-            'system_message': {
-                'advisor': SYSTEM_MESSAGE_ADVISOR,
-            },
-        },
-        'streaming': False,
         'log': {
             'enabled': False,
             'filepath': 'chatgpt.log',
@@ -88,7 +56,7 @@ DEFAULT_CONFIG = {
     },
     'plugins': {
         'enabled': [
-            'awesome',
+            'echo',
         ],
     },
     'debug': {
@@ -105,7 +73,6 @@ DEFAULT_CONFIG = {
 COMMAND_LEADER = '/'
 LEGACY_COMMAND_LEADER = '!'
 DEFAULT_COMMAND = 'ask'
-COMMAND_HISTORY_FILE = '%s%srepl_history.log' % (tempfile.gettempdir(), os.path.sep)
 DEFAULT_HISTORY_LIMIT = 20
 SHELL_ONE_SHOT_COMMANDS = [
     'install',
@@ -117,23 +84,11 @@ SHELL_ONE_SHOT_COMMANDS = [
 NO_TITLE_TEXT = "No title"
 # These are the variables in this file that are available for substitution in
 # help messages.
-HELP_TOKEN_VARIBALE_SUBSTITUTIONS = [
+HELP_TOKEN_VARIABLE_SUBSTITUTIONS = [
     'COMMAND_LEADER',
     'DEFAULT_HISTORY_LIMIT',
     'SYSTEM_MESSAGE_DEFAULT',
     'OPENAPI_MAX_TOKENS',
     'OPENAPI_MIN_SUBMISSION_TOKENS',
     'OPENAPI_DEFAULT_MAX_SUBMISSION_TOKENS',
-    'OPENAPI_DEFAULT_TEMPERATURE',
-    'OPENAPI_TEMPERATURE_MIN',
-    'OPENAPI_TEMPERATURE_MAX',
-    'OPENAPI_DEFAULT_TOP_P',
-    'OPENAPI_TOP_P_MIN',
-    'OPENAPI_TOP_P_MAX',
-    'OPENAPI_DEFAULT_PRESENCE_PENALTY',
-    'OPENAPI_PRESENCE_PENALTY_MIN',
-    'OPENAPI_PRESENCE_PENALTY_MAX',
-    'OPENAPI_DEFAULT_FREQUENCY_PENALTY',
-    'OPENAPI_FREQUENCY_PENALTY_MIN',
-    'OPENAPI_FREQUENCY_PENALTY_MAX',
 ]

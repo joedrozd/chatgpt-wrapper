@@ -30,7 +30,7 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=True)
     email = Column(String, unique=True, nullable=True)
-    default_model = Column(String, nullable=False)
+    default_preset = Column(String, nullable=False)
     created_time = Column(DateTime, nullable=False)
     last_login_time = Column(DateTime, nullable=True)
     preferences = Column(JSON, nullable=False)
@@ -49,6 +49,8 @@ class Conversation(Base):
     user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     title = Column(String, nullable=True)
     model = Column(String, nullable=False)
+    provider = Column(String, nullable=False)
+    preset = Column(String, nullable=False)
     created_time = Column(DateTime, nullable=False)
     updated_time = Column(DateTime, nullable=False)
     hidden = Column(Boolean, nullable=False)
@@ -95,12 +97,6 @@ class Orm:
 
     def create_engine_and_metadata(self):
         args = ""
-        # TODO: check_same_thread is currently needed for SQLite so the
-        # separate thread that generates titles can run without error.
-        # It would probably be better to work this out with locking or
-        # a separate database connection or other fix.
-        if self.database.startswith('sqlite'):
-            args = "?check_same_thread=False"
         engine = create_engine(f"{self.database}{args}")
         metadata = MetaData()
         metadata.reflect(bind=engine)
@@ -136,20 +132,21 @@ class Orm:
         messages = query.all()
         return messages
 
-    def add_user(self, username, password, email, default_model="default", preferences={}):
+    def add_user(self, username, password, email, default_preset="", preferences=None):
+        preferences = preferences or {}
         now = datetime.datetime.now()
-        user = User(username=username, password=password, email=email, default_model=default_model, created_time=now, last_login_time=now, preferences=preferences)
+        user = User(username=username, password=password, email=email, default_preset=default_preset, created_time=now, last_login_time=now, preferences=preferences)
         self.session.add(user)
         self.session.commit()
         self.log.info(f'Added User with username {username}')
         return user
 
-    def add_conversation(self, user, title, model="default", hidden=False):
+    def add_conversation(self, user, title, model=None, provider=None, preset="", hidden=False):
         now = datetime.datetime.now()
-        conversation = Conversation(user_id=user.id, title=title, model=model, created_time=now, updated_time=now, hidden=False)
+        conversation = Conversation(user_id=user.id, title=title, model=model, provider=provider, preset=preset, created_time=now, updated_time=now, hidden=False)
         self.session.add(conversation)
         self.session.commit()
-        self.log.info(f"Added Conversation with title '{title}' for User {user.username}")
+        self.log.info(f"Added Conversation with title: {title}, model: {model}, provider: {provider}, preset: {preset} for User {user.username}")
         return conversation
 
     def add_message(self, conversation, role, message):

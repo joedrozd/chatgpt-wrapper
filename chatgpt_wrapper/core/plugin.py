@@ -8,13 +8,9 @@ class PluginBase(ABC):
         self.config = config or Config()
         self.log = Logger(self.__class__.__name__, self.config)
 
-    @abstractmethod
-    def setup(self):
-        pass
-
-    @abstractmethod
-    def default_config(self):
-        pass
+    @property
+    def plugin_type(self):
+        return 'plugin'
 
     def set_name(self, name):
         self.name = name
@@ -31,7 +27,8 @@ class PluginBase(ABC):
     def incompatible_backends(self):
         return []
 
-    def make_llm(self, args={}):
+    def make_llm(self, args=None):
+        args = args or {}
         return self.backend.make_llm(args)
 
     def query_llm(self, messages):
@@ -47,4 +44,8 @@ class Plugin(PluginBase):
 
     @abstractmethod
     def setup(self):
+        pass
+
+    @abstractmethod
+    def default_config(self):
         pass

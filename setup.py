@@ -18,11 +18,18 @@ setup(
     version=version,
     author="Mahmoud Mabrouk",
     author_email="mahmoudmabrouk.mail@gmail.com",
-    description="A simple Python class for interacting with OpenAI's chatGPT using Playwright",
+    description="CLI wrapper around common LLMs, with a focus on OpenAI's models",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mmabrouk/chatgpt-wrapper",
     packages=find_packages(),
+    package_data={
+        'chatgpt_wrapper': [
+            'backends/api/schema/alembic.ini',
+            'backends/api/schema/alembic/*',
+            'backends/api/schema/alembic/**/*',
+        ],
+    },
     install_requires=install_requirement,
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -32,8 +39,9 @@ setup(
     python_requires=">=3.7",
     entry_points={
         "console_scripts": [
-            "chatgpt = chatgpt_wrapper.main:main"
-        ]
+            "chatgpt = chatgpt_wrapper.main:main",
+        ],
+        "chatgpt_wrapper_plugins": [],
     },
     scripts=["postinstall.sh"],
 )

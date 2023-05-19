@@ -1,3 +1,201 @@
+### v0.10.6 - 18/05/2023
+
+* **Thu May 18 2023:** fix streaming when overriding a preset in templates
+
+### v0.10.5 - 17/05/2023
+
+* **Wed May 17 2023:** add doc for browser backend with web browser support
+* **Wed May 17 2023:** add support for ChatGPT with browsing (alpha, browser backend only)
+
+### v0.10.4 - 15/05/2023
+
+* **Mon May 15 2023:** fix broken streaming, clean up can/should stream logic, fixes #303
+
+### v0.10.3 - 15/05/2023
+
+* **Mon May 15 2023:** clean up alembic config process
+* **Mon May 15 2023:** add util function to get directory of any file
+* **Mon May 15 2023:** fix missing alembic files
+
+### v0.10.2 - 14/05/2023
+
+* **Sun May 14 2023:** fix missing __init__ file for schema dir
+
+### v0.10.1 - 13/05/2023
+
+#### **:fire_engine:Deprecations:fire_engine:**
+
+* Configuration `backend:` settings have changed values
+  * `chatgpt-api` is now `api`
+  * `chatgpt-browser` is now `browser`
+
+#### Commit log
+
+* **Sat May 13 2023:** fix some message composition and streaming bugs
+* **Sat May 13 2023:** fix default args to prevent mutable default args bugs
+* **Sat May 13 2023:** update backend config names, add deprecation warning for old names
+
+### v0.10.0 - 13/05/2023
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+This version performs operations on the database that stores users/conversations/messages.
+**Please read the the upgrade warnings at https://github.com/mmabrouk/chatgpt-wrapper#upgrading prior to running the upgrade!**
+
+#### New features
+
+* Plugin support for browser backend
+* Database schema upgrade system
+* Per user default presets
+* Switching conversations loads original preset or provider/module used when conversation was created
+
+#### Commit log
+
+* **Sat May 13 2023:** document per-user default presets
+* **Sat May 13 2023:** fix random bugs with streaming across providers
+* **Sat May 13 2023:** document plugin support
+* **Sat May 13 2023:** /plugin-enable and /plugin-disable commands, dynamically add/remove plugins
+* **Sat May 13 2023:** add /enabled-plugins command
+* **Sat May 13 2023:** underscore commands in help command substitution
+* **Sat May 13 2023:** add plugin support to browser backend, /plugins list command
+* **Sat May 13 2023:** add database upgrade warnings to README
+* **Sat May 13 2023:** add  prompt replacement token, indicator for active preset in /presets command
+* **Sat May 13 2023:** schema upgrade, store provider and preset for conversation, use when re-loading conversations
+* **Sat May 13 2023:** exit on upgrade error
+* **Sat May 13 2023:** improve stream logging
+* **Sat May 13 2023:** working user default presets
+* **Fri May 12 2023:** improve display/management of system message aliases
+* **Thu May 11 2023:** schema upgrade, default_model -> default_preset for users
+* **Thu May 11 2023:** database schema upgrade system using alembic
+* **Wed May 10 2023:** clarify doc for presets
+* **Tue May 09 2023:** timeout for trying to retrieve awesome prompts
+
+### v0.9.0 - 08/05/2023
+
+This is a substantial rewrite to add support for multiple providers and management of preset configurations.
+
+New features are documented in the README.
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+##### Configuration
+
+* Removed the following values from `shell.prompt_prefix`:
+  * `$TOP_P`
+  * `$PRESENCE_PENALTY`
+  * `$FREQUENCY_PENALTY`
+* Removed `chat.model` configuration setting.
+* Removed `chat.model_customizations` configuration setting.
+* Added a new `model` configuration hash, with the following new attributes:
+  * `default_preset`
+* Moved `chat.model_customizations.system_message` configuration setting to `model.system_message`
+* Moved `chat.streaming` configuration setting to `model.streaming`
+
+##### CLI use
+
+* `--model` command line argument has been removed
+* `--preset` command line argument has been added
+* Saving/editing a default model per user in the API backend has been removed
+* `/model` command has been rewritten. See `/help model` for more information
+* Removed the following commands:
+  * `/model-temperature`: Now set under `/model temperature`
+  * `/model-top-p`: Now set under `/model model_kwargs`
+  * `/model-presence-penalty`: Now set under `/model model_kwargs`
+  * `/model-frequency-penalty`: Now set under `/model model_kwargs`
+* Renamed the following commands:
+  * `/model-system-message` to `/system-message`
+
+##### Templates
+
+* Special `model_customizations` variable has been renamed to `request_overrides`, and functionality has changed. See the `Templates` section in the README for more info.
+
+##### Python module use
+
+* API backend modules location changed to `backends/api`
+* API backend file location changed to `backends/api/backend.py`
+* API backend class `OpenAIAPI` renamed to `ApiBackend`
+* Removed the following abstract methods from the base `Backend` class:
+  * `get_backend_name`
+  * `set_available_models`
+* Added the following abstract methods to the base `Backend` class:
+  * `set_override_llm`
+
+#### Commit log
+
+* **Mon May 08 2023:** update documentation for presets/providers
+* **Mon May 08 2023:** add /providers command to list providers, sort presets/templates
+* **Mon May 08 2023:** update example config
+* **Mon May 08 2023:** enhance browser backend test, add wait arg
+* **Mon May 08 2023:** convert all direct API calls in browser backend to use injected XHR requests
+* **Mon May 08 2023:** function/var renames for clarity
+* **Mon May 08 2023:** update pip package description
+* **Mon May 08 2023:** rename classes for clarity
+* **Sun May 07 2023:** add commented list of openai codex models
+* **Sun May 07 2023:** add huggingface_hub provider
+* **Sun May 07 2023:** add openai provider
+* **Sun May 07 2023:** add AI21 provider
+* **Sun May 07 2023:** update CLI args, remove model, add preset
+* **Sun May 07 2023:** fix streaming on override LLM
+* **Sun May 07 2023:** custom LLM override functionality, allow override using preset in templates
+* **Sun May 07 2023:** include name in preset metadata
+* **Sun May 07 2023:** re-add max-submission-tokens, abstract for multiple providers, enhance error message for get_set_backend_setting(), add get_capability() method to provider class, discover provider from model, use when switching conversations, remove errant streaming capabilitiy from cohere provider
+* **Sat May 06 2023:** update sample config
+* **Sat May 06 2023:** move preset_manager to backend, refactor init model to init with default preset, remove dead constants, model_customizations -> request_overrides, refactor config setting locations
+* **Sat May 06 2023:** strings instead of arrays for non-chat LLM messages
+* **Sat May 06 2023:** upgrade langchain/sqlalchemy, cohere dep
+* **Sat May 06 2023:** abstract title generation, message preparation/extraction
+* **Sat May 06 2023:** REPL stream references backend stream setting
+* **Fri May 05 2023:** should_stream() for backend, look at streaming setting directly
+* **Thu May 04 2023:** add get_customizations() method, scrubs metadata
+* **Thu May 04 2023:** working presets, fix streaming in API backend
+* **Wed May 03 2023:** add cohere plugin
+* **Wed May 03 2023:** rebuild completions on provider change, start abstracting model property name
+* **Wed May 03 2023:** /provider command to switch providers
+* **Wed May 03 2023:** more robust provider loading
+* **Wed May 03 2023:** add PROVIDER_PREFIX constant
+* **Wed May 03 2023:** display/full name management for providers
+* **Wed May 03 2023:** refactor model handling, get/set models
+* **Wed May 03 2023:** restrict langchain version, fixes #296
+* **Tue Apr 25 2023:** check for and close browser page in cleanup()
+* **Mon Apr 24 2023:** basic working API backend implementation with ChatOpenAI
+* **Sun Apr 23 2023:** clarify instructions for GPT-4 use
+* **Sat Apr 22 2023:** check for existing browser pages before closing context, add more debugging to cleanp()
+* **Thu Apr 13 2023:** rip out model specific commands, refactor do_model, fix model completions
+* **Thu Apr 13 2023:** loosen up timestamp string for conversion, fixes #287
+* **Wed Apr 12 2023:** move llm creation into provider class, move browser backend provider to plugin
+* **Wed Apr 12 2023:** initial preset manager
+* **Tue Apr 11 2023:** make api key/org private
+* **Tue Apr 11 2023:** PresetValue class, functionality to set model customizations
+* **Tue Apr 11 2023:** Get Docker container working, clarify documentation, fixes #268, fixes #276, fixes #281
+* **Tue Apr 11 2023:** clean up browser integration test
+* **Tue Apr 11 2023:** speed up zap plugin loading
+* **Mon Apr 10 2023:** move plugin manager instantiation to backends
+* **Mon Apr 10 2023:** support passing list of additional plugins to plugin manager
+* **Mon Apr 10 2023:** add provider base class, move chat_openai provider plugin
+* **Sat Apr 08 2023:** initial provider manager implementation
+
+### v0.8.4 - 13/04/2023
+
+* **Thu Apr 13 2023:** loosen up timestamp string for conversion, fixes #287
+* **Tue Apr 11 2023:** Get Docker container working, clarify documentation, fixes #268, fixes #276, fixes #281
+* **Tue Apr 11 2023:** clean up browser integration test
+* **Sat Apr 08 2023:** clarify API backed model is set per user, fixes #283
+* **Sat Apr 08 2023:** provide empty config if config file is empty, fixes #282
+* **Fri Apr 07 2023:** enable echo plugin by default, remove awesome plugin as default
+* **Fri Apr 07 2023:** move test plugin to echo
+* **Fri Apr 07 2023:** fix syntax error in setup script, fixes #280
+* **Fri Apr 07 2023:** add support for plugin packages
+
+### v0.8.3 - 07/04/2023
+
+* **Fri Apr 07 2023:** properly set user object in all login scenarios, fixes #260, fixes #262
+* **Thu Apr 06 2023:** sync docs
+
+### v0.8.2 - 05/04/2023
+
+* **Wed Apr 05 2023:** enable console/file debugging for --debug arg, print backtrace on command exceptionn when --debug enabled
+* **Tue Apr 04 2023:** add shell.history_file config option
+
 ### v0.8.1 - 03/04/2023
 
 * **Mon Apr 03 2023:** add support for listing incompatible backends in plugins

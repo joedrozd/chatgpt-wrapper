@@ -18,15 +18,17 @@ What would you like to do?
 
 ## Highlights
 
-🤖 The ChatGPT Wrapper lets you use the powerful ChatGPT/GPT4 bot from the _command line.
+🤖 The ChatGPT Wrapper lets you use the powerful ChatGPT/GPT4 bot from the **command line**.
 
 💬 **Runs in Shell**. You can call and interact with ChatGPT/GPT4 in the terminal.
 
 💻  **Supports official ChatGPT API**. Make API calls directly to the OpenAI ChatGPT endpoint (all supported models accessible by your OpenAI account)
 
-🐍 **Python API**. The ChatGPT Wrapper also has a Python library that lets you use ChatGPT/GPT4 in your Python scripts.
+🔌 **Simple plugin architecture**. Extend the wrapper with custom functionality
 
-🔌 **Simple plugin architecture**. Extend the wrapper with custom functionality (alpha)
+🗣 **Supports multiple LLM providers**. Provider plugins allow interacting with other LLMs (GPT-3, Cohere, Hugginface, etc.)
+
+🐍 **Python API**. The ChatGPT Wrapper also has a Python library that lets you use ChatGPT/GPT4 in your Python scripts.
 
 🐳 **Docker image**. The ChatGPT Wrapper is also available as a docker image. (experimental)
 
@@ -48,7 +50,7 @@ See below for details on using ChatGPT as an API from Python.
 
 To use this repository, you need `setuptools` installed. You can install it using `pip install setuptools`. Make sure that you have the last version of pip: `pip install --upgrade pip`
 
-To use the 'chatgpt-api' backend (the default), you need a database backend (SQLite by default, any configurable in SQLAlchemy allowed).
+To use the 'api' backend (the default), you need a database backend (SQLite by default, any configurable in SQLAlchemy allowed).
 
 ## Installation
 
@@ -134,6 +136,14 @@ Once you're logged in, you have full access to all commands.
 
 **IMPORTANT NOTE:** The user authorization system from the command line is 'admin party' -- meaning every logged in user has admin privileges, including editing and deleting other users.
 
+##### Setting a per-user default preset
+
+The API backend supports configuring a preset per user.
+
+To do so, run `/user-edit` and selecting a default preset will be one of the options.
+
+See [Presets](#presets) for more information on configuring presets.
+
 #### Playwright (browser-based): **DEPRECATED**
 
 This backend is deprecated, and may be removed in a future release.
@@ -143,6 +153,7 @@ Support will not be provided for using the `ChatGPT` class of this backend direc
 * Pros:
   * Free or paid version available (as of this writing)
   * Fairly easy to set up for non-technical users
+  * Access to ChatGPT plugins (alpha, requires account with access)
 * Cons:
   * Slow (runs a full browser session)
   * Clunky authentication method
@@ -152,7 +163,7 @@ Support will not be provided for using the `ChatGPT` class of this backend direc
 In your profile configuration file, you'll want to make sure the backend is set to the following in order to use the browser backend:
 
 ```yaml
-backend: 'chatgpt-browser'
+backend: 'browser'
 ```
 
 To tweak the configuration for the current profile, see [Configuration](#configuration)
@@ -180,6 +191,30 @@ Restart the program without the `install` parameter to begin using it.
 ```bash
 chatgpt
 ```
+
+##### Using ChatGPT Plugins (alpha)
+
+Officially approved ChatGPT plugins can be configured for use with the browser backend.
+
+**NOTE:** This requires your OpenAI login account to have access to ChatGPT plugins.
+
+To use plugins:
+
+1. You must use a model that supports plugins: `/model model_name gpt-4-plugins`
+2. Browse the plugins: `/plugins`, or a filter the full list by a phrase, `/plugins youtube`
+3. To enable the plugin by default, add the plugin ID to the `browser.plugins` list in your configuration file:
+   ```yaml
+   browser:
+     plugins:
+       - plugin-d1d6eb04-3375-40aa-940a-c2fc57ce0f51
+   ```
+4. You can also dynamically enable/disable plugins, see the help for `/plugin-enable` and `/plugin-disable`
+
+##### Using ChatGPT with browsing (alpha)
+
+**NOTE:** This requires your OpenAI login account to have access to ChatGPT with browsing.
+
+To use ChatGPT with browsing, you must use a model that supports browsing: `/model model_name gpt-4-browsing`
 
 ### Notes for Windows users
 
@@ -226,7 +261,47 @@ configuration settings.
 3. Edit file to taste and save
 4. Restart the program
 
-## Templates (alpha, subject to change)
+## Configuring model properties
+
+To change the properties of a particular LLM model, use the `/model` command:
+
+```
+/model model_name gpt-3.5-turbo
+/model temperature 1.0
+```
+
+The `/model` command works within the models of the currently loaded provider.
+
+NOTE: The attributes that a particular model accepts are beyond the scope of this 
+document. While some attributes can be displayed via command completion in the
+shell, you are advissed to consult the API documentation for the specific provider
+for a full list of available attributes and their values.
+
+## Presets
+
+Presets allow you to conveniently manage various provider/model configurations.
+
+As you use the CLI, you can execute a combination of `/provider` and `/model`
+commands to set up a provider/model configuration to your liking.
+
+Once you have the configuration set up, you can 'capture' it by saving it as a
+preset.
+
+To save an existing configuration as a preset:
+
+```
+/preset-save mypresetname
+```
+
+Later, to load that configuration for use:
+
+```
+/preset-load mypresetname
+```
+
+See `/help` for the various other preset commands.
+
+## Templates
 
 The wrapper comes with a full template management system.
 
@@ -255,11 +330,13 @@ These front matter attributes have special functionality:
 
 * title: Sets the title of new conversations to this value
 * description: Displayed in the output of `/templates`
-* model_customizations: A hash of model customizations to apply when the template is run (see `/config` for available model customizations)
+* request_overrides: A hash of model customizations to apply when the template is run:
+  * preset: An existing preset for the provider/model configuration to use when running
+            the template (see [Presets](#presets))
 
 All other attributes will be passed to the template as variable substitutions.
 
-## Plugins (alpha, subject to change)
+## Plugins
 
 ### Using plugins
 
@@ -286,6 +363,35 @@ All other attributes will be passed to the template as variable substitutions.
 * **shell:** Transform natural language into a shell command, and optionally execute it **WARNING: POTENTIALLY DANGEROUS -- YOU ARE RESPONSIBLE FOR VALIDATING THE COMMAND RETURNED BY THE LLM, AND THE OUTCOME OF ITS EXECUTION.**
 * **zap:** Send natural language commands to Zapier actions: [https://nla.zapier.com/get-started/](https://nla.zapier.com/get-started/)
 
+### Provider plugins (alpha, subject to change):
+
+**NOTE:** Most provider plugins are *not* chat-based, and instead return a single response to any text input.
+These inputs and responses are still managed as 'conversations' for storage purposes, using the same storage
+mechanism the chat-based providers use.
+
+#### Supported providers
+
+**NOTE:** While these provider integrations are working, none have been well-tested yet.
+
+* **provider_ai21:** Access to [AI21](https://docs.ai21.com/docs/jurassic-2-models) models
+* **provider_cohere:** Access to [Cohere](https://docs.cohere.com/docs/models) models
+* **provider_huggingface_hub:** Access to [Huggingface Hub](https://huggingface.co/models) models
+* **provider_openai:** Access to non-chat [OpenAI](https://platform.openai.com/docs/models) models (GPT-3, etc.)
+
+#### Usage
+
+To enable a supported provider, add it to `plugins.enabled` list in your configuration.
+
+```yaml
+plugins:
+  enabled:
+    - provider_openai
+```
+
+See `/help providers` for a list of currently enabled providers.
+
+See `/help provider` for how to switch providers/models on the fly.
+
 ### Writing plugins
 
 There is currently no developer documentation for writing plugins.
@@ -298,6 +404,8 @@ Currently, plugins for the shell can only add new commands. An instantiated plug
 * `self.log`: The instantiated Logger object
 * `self.backend`: The instantiated backend
 * `self.shell`: The instantiated shell
+
+To write new provider plugins, investigate the existing provider plugins as examples.
 
 ## Tutorials:
 
@@ -345,14 +453,14 @@ Once the interactive shell is running, you can see a list of all commands with:
 
 **IMPORTANT:** Use of browser backend's `ChatGPT` class has been deprectated, no support will be provided for this usage.
 
-You can  use the API backend's `OpenAIAPI` class to interact directly with the chat LLM.
+You can  use the API backend's `ApiBackend` class to interact directly with the chat LLM.
 
 Create an instance of the class and use the `ask` method to send a message to OpenAI and receive the response. For example:
 
 ```python
-from chatgpt_wrapper import OpenAIAPI
+from chatgpt_wrapper import ApiBackend
 
-bot = OpenAIAPI()
+bot = ApiBackend()
 success, response, message = bot.ask("Hello, world!")
 if success:
     print(response)
@@ -367,12 +475,12 @@ You may also stream the response as it comes in from the API in chunks using the
 To pass custom configuration to ChatGPT, use the Config class:
 
 ```python
-from chatgpt_wrapper import OpenAIAPI
+from chatgpt_wrapper import ApiBackend
 from chatgpt_wrapper.core.config import Config
 
 config = Config()
 config.set('browser.debug', True)
-bot = OpenAIAPI(config)
+bot = ApiBackend(config)
 success, response, message = bot.ask("Hello, world!")
 if success:
     print(response)
@@ -389,7 +497,11 @@ else:
 
 ## Docker (experimental)
 
-Build a image for testing `chatgpt-wrapper` with following commands.
+Build a docker image for testing `chatgpt-wrapper`:
+
+Make sure your OpenAI key has been exported into your host environment as `OPENAI_API_KEY`
+
+Run the following commands:
 
 ```bash
 docker-compose build && docker-compose up -d
@@ -431,6 +543,17 @@ It's possible that:
 
 ## Upgrading:
 
+### PLEASE HEED THESE IMPORTANT WARNINGS
+
+1. This is a pre-release project
+  * Breaking changes are happening regularly
+  * **Before you upgrade and before you file any issues related to upgrading, refer to the `Breaking Changes` section for all releases since your last upgrade.**
+2. Back up your database
+  * Some releases include changes to the database schema
+  * **If you care about any data stored by this project, back it up before upgrading**
+  * Common upgrade scenarios are tested with the default database (SQLite), but data integrity is **not** guaranteed
+  * If any database errors occur during an upgrade, roll back to an earlier release and [file an issue](ISSUES.md)
+
 ### Via pip
 
 Until an official release exists, you'll need to uninstall and reinstall:
@@ -450,23 +573,54 @@ git pull
 
 ## GPT4
 
-### Backend notes
-
-#### API backend
+### API backend
 
 To use GPT-4 with this backend, you must have been granted access to the model in your OpenAI account.
 
-#### Playwright (browser-based) backend: **DEPRECATED**
+NOTE: If you have not been granted access, you'll probably see an error like this:
+
+```
+InvalidRequestError(message='The model: `gpt-4` does not exist', param=None, code='model_not_found', http_status=404, request_id=None)
+```
+
+There is nothing this project can do to fix the error for you -- contact OpenAI and request GPT-4 access.
+
+Follow one of the methods below to utilize GPT-4 in this backend:
+
+##### Method 1: Set a default preset configured with GPT-4
+
+See [Presets](#presets) above to configure a preset using GPT-4
+
+Add the preset to the config file as the default preset on startup:
+
+```yaml
+# This assumes you created a preset named 'gpt-4'
+model:
+  default_preset: gpt-4
+
+```
+
+##### Method 2: Dynamically switch
+
+From within the shell, execute this command:
+
+```
+/model model_name gpt-4
+```
+
+...or... if you're not currently using the 'chat_openai' provider:
+
+```
+/provider chat_openai gpt-4
+```
+
+### Playwright (browser-based) backend: **DEPRECATED**
 
 To use GPT-4 with this backend, you must have a ChatGPT-Plus subscription.
 
-### Using GPT-4
+Follow one of the methods below to utilize GPT-4 in this backend:
 
-#### From the shell
-
-Follow one of the methods below to utilize GPT-4 in the shell:
-
-##### Method 1: Run the command
+##### Method 1: Command line argument
 
 Enter the following command in your shell:
 
@@ -479,20 +633,35 @@ chatgpt --model=gpt4
 Update your `config.yaml` file to include the following line:
 
 ```
-model: gpt4
+chat:
+  model: gpt4
 ```
 
-#### Via Python module
+Then start the program normally:
+
+```
+chatgpt
+```
+
+##### Method 3: Dynamically switch
+
+From within the shell, execute this command:
+
+```
+/model gpt4
+```
+
+### Python module
 
 To use GPT-4 within your Python code, follow the template below:
 
 ```python
-from chatgpt_wrapper import OpenAIAPI
+from chatgpt_wrapper import ApiBackend
 from chatgpt_wrapper.core.config import Config
 
 config = Config()
 config.set('chat.model', 'gpt4')
-bot = OpenAIAPI(config)
+bot = ApiBackend(config)
 success, response, message = bot.ask("Hello, world!")
 ```
 
@@ -515,7 +684,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- This project is a modification from [Taranjeet](https://github.com/taranjeet/chatgpt-api) code which is a modification of [Daniel Gross](https://github.com/danielgross/whatsapp-gpt) code.
+- The original 'browser' backend is a modification from [Taranjeet](https://github.com/taranjeet/chatgpt-api) code which is a modification of [Daniel Gross](https://github.com/danielgross/whatsapp-gpt) code.
 
 ## Star History
 

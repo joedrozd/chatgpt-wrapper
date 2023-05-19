@@ -5,7 +5,8 @@ import platform
 import chatgpt_wrapper.core.constants as constants
 
 class Config:
-    def __init__(self, config_dir=None, data_dir=None, profile=constants.DEFAULT_PROFILE, config={}):
+    def __init__(self, config_dir=None, data_dir=None, profile=constants.DEFAULT_PROFILE, config=None):
+        config = config or {}
         self.system = platform.system()
         self.profile = profile
         self.config = self._merge_configs(constants.DEFAULT_CONFIG, config)
@@ -59,7 +60,7 @@ class Config:
         self.config_file = os.path.join(self.config_profile_dir, "config.yaml")
         try:
             with open(self.config_file, "r") as f:
-                config = yaml.safe_load(f)
+                config = yaml.safe_load(f) or {}
             self.config = self._merge_configs(constants.DEFAULT_CONFIG, config)
         except FileNotFoundError:
             self.config = constants.DEFAULT_CONFIG

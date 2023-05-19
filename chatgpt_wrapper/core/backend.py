@@ -1,11 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from langchain.callbacks.base import CallbackManager
+# TODO: Uncomment after https://github.com/hwchase17/langchain/pull/4403 is fixed.
+# from langchain.callbacks.manager import CallbackManager, StreamInterruption
+# TODO: Remove after https://github.com/hwchase17/langchain/pull/4403 is fixed.
+from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 from chatgpt_wrapper.core.config import Config
 from chatgpt_wrapper.core.logger import Logger
+from chatgpt_wrapper.core.preset_manager import PresetManager
 from chatgpt_wrapper.core import util
 
 class VerboseStreamingStdOutCallbackHandler(StreamingStdOutCallbackHandler):
@@ -21,6 +25,9 @@ def make_interrupt_streaming_callback_handler(backend):
                 util.print_status_message(False, "\n\nWARNING:\nStream interruption on the API backend is not currently working properly, and may not properly store information on an interrupted stream.\nIf you'd like to help fix this error, see https://github.com/mmabrouk/chatgpt-wrapper/issues/274")
                 message = "Request to interrupt streaming"
                 backend.log.info(message)
+                # TODO: Uncomment after https://github.com/hwchase17/langchain/pull/4403 is fixed.
+                # raise StreamInterruption(message)
+                # TODO: Remove after https://github.com/hwchase17/langchain/pull/4403 is fixed.
                 raise EOFError(message)
     return InterruptStreamingCallbackHandler()
 
@@ -30,33 +37,45 @@ class Backend(ABC):
     """
 
     def __init__(self, config=None):
-        self.name = self.get_backend_name()
         self.config = config or Config()
         self.log = Logger(self.__class__.__name__, self.config)
+        self.provider_name = None
+        self.provider = None
         self.parent_message_id = None
         self.conversation_id = None
         self.conversation_title_set = None
         self.message_clipboard = None
+        self.stream = False
         self.streaming = False
         self.interrupt_streaming_callback_handler = make_interrupt_streaming_callback_handler(self)
-        self.set_available_models()
-        self.set_active_model(self.config.get('chat.model'))
+        self.preset_manager = PresetManager(self.config)
 
-    def set_llm_class(self, klass):
-        self.llm_class = klass
+    def set_available_models(self):
+        self.available_models = self.provider.available_models
 
-    def get_default_llm_args(self):
-        return {
-            'temperature': 0,
-            'model_name': self.model,
-            # TODO: This used to work on the deprecated OpenAIChat class, but now no longer works.
-            # 'prefix_messages': [
-            #     {
-            #         'role': 'system',
-            #         'content': 'You are a helpful assistant that is very good at problem solving who thinks step by step.',
-            #     },
-            # ]
-        }
+    def set_provider_streaming(self, stream=None):
+        self.log.debug("Setting provider streaming")
+        if self.provider.can_stream():
+            self.log.debug("Provider can stream")
+            if stream is not None:
+                self.stream = stream
+            self.provider.set_customization_value('streaming', self.stream)
+        else:
+            self.log.debug("Provider cannot stream")
+            if stream is not None:
+                self.stream = stream
+        self.log.info(f"Provider streaming is now: {self.stream}")
+
+    def should_stream(self):
+        # NOTE: No override_provider on some backends, this allows support
+        # across backends.
+        provider = getattr(self, 'override_provider', None) or self.provider
+        can_stream = provider.can_stream()
+        customizations = provider.get_customizations()
+        should_stream = customizations.get('streaming', False)
+        should_stream_result = can_stream and should_stream
+        self.log.debug(f"Provider should_stream: {should_stream_result}")
+        return should_stream_result
 
     def streaming_args(self, interrupt_handler=False):
         calback_handlers = [
@@ -70,17 +89,14 @@ class Backend(ABC):
         }
         return args
 
-    def make_llm(self, args={}):
-        final_args = self.get_default_llm_args()
-        final_args.update(args)
-        llm = self.llm_class(**final_args)
+    def make_llm(self, customizations=None):
+        customizations = customizations or {}
+        llm = self.provider.make_llm(customizations)
         return llm
 
-    def set_active_model(self, model=None):
-        if model is None:
-            self.model = None
-        else:
-            self.model = self.available_models[model]
+    def set_model(self, model_name):
+        self.model = model_name
+        return self.provider.set_model(model_name)
 
     def new_conversation(self):
         self.parent_message_id = None
@@ -101,14 +117,6 @@ class Backend(ABC):
         return ""
 
     @abstractmethod
-    def get_backend_name(self):
-        pass
-
-    @abstractmethod
-    def set_available_models(self):
-        pass
-
-    @abstractmethod
     def conversation_data_to_messages(self, conversation_data):
         pass
 
@@ -126,6 +134,10 @@ class Backend(ABC):
 
     @abstractmethod
     def get_conversation(self, uuid=None):
+        pass
+
+    @abstractmethod
+    def set_override_llm(self, preset_name=None):
         pass
 
     @abstractmethod

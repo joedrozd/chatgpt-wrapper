@@ -3,14 +3,14 @@ import argparse
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from chatgpt_wrapper.backends.openai.api import OpenAIAPI
+from chatgpt_wrapper import ApiBackend
 from chatgpt_wrapper.core.config import Config
 
 
 def create_application(name, config=None, timeout=60, proxy=None):
     config = config or Config()
     config.set('debug.log.enabled', True)
-    gpt = OpenAIAPI(config)
+    gpt = ApiBackend(config)
     app = Flask(name)
     CORS(app, resources={r"/*": {"origins": "https://localhost:7264"}})
 

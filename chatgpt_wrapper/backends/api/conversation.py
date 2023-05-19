@@ -1,6 +1,6 @@
 from sqlalchemy.exc import SQLAlchemyError
 
-from chatgpt_wrapper.backends.openai.orm import Manager
+from chatgpt_wrapper.backends.api.orm import Manager
 
 class ConversationManager(Manager):
     def get_conversations(self, user_id, limit=None, offset=None, order_desc=True):
@@ -11,10 +11,10 @@ class ConversationManager(Manager):
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to retrieve conversations: {str(e)}")
 
-    def add_conversation(self, user_id, title=None, model="default", hidden=False):
+    def add_conversation(self, user_id, title=None, model=None, provider=None, preset="", hidden=False):
         try:
             user = self.orm.get_user(user_id)
-            conversation = self.orm.add_conversation(user, title, model, hidden)
+            conversation = self.orm.add_conversation(user, title, model, provider, preset, hidden)
             return True, conversation, "Conversation created successfully."
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to create conversation: {str(e)}")

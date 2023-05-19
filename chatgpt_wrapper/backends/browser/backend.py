@@ -2,85 +2,40 @@ import os
 import atexit
 import base64
 import json
+import random
+import string
 import time
 import datetime
 import uuid
 import re
 import shutil
-from typing import Optional, List
 from playwright.sync_api import sync_playwright
 from playwright._impl._api_structures import ProxySettings
 
-from pydantic_computed import Computed, computed
-from langchain.chat_models.base import BaseChatModel
-from langchain.schema import (
-    BaseMessage,
-    ChatGeneration,
-    ChatResult,
-)
-from langchain.chat_models.openai import _convert_dict_to_message
+from typing import Optional
+
+from langchain.schema import HumanMessage
 
 from chatgpt_wrapper.core.backend import Backend
+from chatgpt_wrapper.core.plugin_manager import PluginManager
+from chatgpt_wrapper.core.provider_manager import ProviderManager
 from chatgpt_wrapper.core import util
-import chatgpt_wrapper.core.constants as constants
 
 GEN_TITLE_TIMEOUT = 5000
 
-def make_llm_class(klass):
-    class ChatGPTLLM(BaseChatModel):
-        streaming: bool = False
-        model_name: str = "gpt-3.5-turbo"
-        temperature: float = 0.7
-        verbose: bool = False
-        chatgpt: Computed[ChatGPT]
+PROVIDER_BROWSER = "provider_chatgpt_browser"
+ADDITIONAL_PLUGINS = [
+    PROVIDER_BROWSER,
+]
 
-        @computed('chatgpt')
-        def set_chatgpt(**kwargs):
-            return klass
-
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-            model_name = kwargs.get("model_name")
-            if model_name:
-                self.model_name = model_name
-
-        def _agenerate(self):
-            pass
-
-        def _generate(
-            self, messages: any, stop: Optional[List[str]] = None
-        ) -> ChatResult:
-            prompts = []
-            if isinstance(messages, str):
-                messages = [messages]
-            for message in messages:
-                content = message.content if isinstance(message, BaseMessage) else message
-                prompts.append(content)
-            inner_completion = ""
-            role = "assistant"
-            for token in self.chatgpt._ask_stream("\n\n".join(prompts)):
-                inner_completion += token
-                if self.streaming:
-                    self.callback_manager.on_llm_new_token(
-                        token,
-                        verbose=self.verbose,
-                    )
-            message = _convert_dict_to_message(
-                {"content": inner_completion, "role": role}
-            )
-            generation = ChatGeneration(message=message)
-            llm_output = {"model_name": self.model_name}
-            return ChatResult(generations=[generation], llm_output=llm_output)
-
-    return ChatGPTLLM
-
-class ChatGPT(Backend):
+class BrowserBackend(Backend):
     """
     A ChatGPT interface that uses Playwright to run a browser,
     and interacts with that browser to communicate with ChatGPT in
     order to provide an open API to ChatGPT.
     """
 
+    name = "browser"
     stream_div_id = "chatgpt-wrapper-conversation-stream-data"
     eof_div_id = "chatgpt-wrapper-conversation-stream-data-eof"
     interrupt_div_id = "chatgpt-wrapper-conversation-stream-data-interrupt"
@@ -93,9 +48,53 @@ class ChatGPT(Backend):
         self.page = None
         self.browser = None
         self.session = None
-        self.set_llm_class(make_llm_class(self))
+        self.original_model = None
+        self.override_llm = None
+        self.plugin_manager = PluginManager(self.config, self, additional_plugins=ADDITIONAL_PLUGINS)
+        self.provider_manager = ProviderManager(self.config, self.plugin_manager)
+        self.set_provider()
+        self.set_available_models()
+        self.init_model()
+        self.plugin_ids = self.config.get('browser.plugins')
         self.new_conversation()
 
+    def init_model(self):
+        default_preset = self.config.get('model.default_preset')
+        if default_preset:
+            success, new_value, user_message = self.set_model(default_preset)
+            if success:
+                return
+            util.print_status_message(False, f"Failed to load default preset {default_preset}: {user_message}")
+        self.set_model(self.provider.default_model)
+
+    def set_provider(self):
+        success, provider, user_message = self.provider_manager.load_provider(PROVIDER_BROWSER)
+        if success:
+            self.provider_name = PROVIDER_BROWSER
+            self.provider = provider
+        return success, provider, user_message
+
+    def set_override_llm(self, preset_name=None):
+        if preset_name:
+            if preset_name not in self.provider.available_models:
+                return False, None, f"Preset {preset_name} not an available model"
+            customizations = {'model_name': preset_name}
+            if self.should_stream():
+                self.log.debug("Adding streaming-specific customizations to LLM request")
+                customizations.update(self.streaming_args(interrupt_handler=True))
+            self.override_llm = self.provider.make_llm(customizations, use_defaults=True)
+            self.original_model = self.model
+            self.model = preset_name
+            message = f"Set override LLM based on preset {preset_name}"
+            self.log.debug(message)
+            return True, self.override_llm, message
+        else:
+            self.override_llm = None
+            self.model = self.original_model
+            self.original_model = None
+            message = "Unset override LLM"
+            self.log.debug(message)
+            return True, None, message
 
     def get_primary_profile_directory(self):
         primary_profile = os.path.join(self.config.data_profile_dir, "playwright")
@@ -155,24 +154,24 @@ class ChatGPT(Backend):
         self.page.goto("https://chat.openai.com/")
 
     def _handle_error(self, obj, response, message):
-        full_message = f"{message}: {response.status} {response.status_text}"
+        full_message = f"{message}: {obj.error} {obj.message}, full response: {response}"
         self.log.error(full_message)
         return False, obj, full_message
 
     def cleanup(self):
         self.log.info("Cleaning up")
-        if self.browser:
+        if self.page and not self.page.is_closed():
+            self.log.debug("Closing browser page")
+            self.page.close()
+        if self.browser and self.browser.pages:
+            self.log.debug("Closing browser context")
             self.browser.close()
         # remove the user data dir in case this is a second instance
         if self.user_data_dir:
+            self.log.info(f"Removing user data dir: {self.user_data_dir}")
             shutil.rmtree(self.user_data_dir)
+        self.log.debug("Closing Playwright")
         self.play.stop()
-
-    def get_backend_name(self):
-        return "chatgpt-browser"
-
-    def set_available_models(self):
-        self.available_models = constants.RENDER_MODELS
 
     def get_runtime_config(self):
         output = """
@@ -187,7 +186,7 @@ class ChatGPT(Backend):
         In this way, we can pass the browser check.
 
         Args:
-            timeout (int, optional): Timeout waiting for the refresh in seconds. Defaults to 10.
+            timeout (int, optional): Timeout waiting for the refresh in seconds. Defaults to 15.
         """
         self.log.info("Refreshing session...")
         self.page.goto("https://chat.openai.com/api/auth/session")
@@ -235,38 +234,111 @@ class ChatGPT(Backend):
         ).replace("EOF_DIV_ID", self.eof_div_id)
         self.page.evaluate(code)
 
-    def _api_request_build_headers(self, custom_headers={}):
+    def _api_request_build_headers(self, custom_headers=None):
+        custom_headers = custom_headers or {}
         headers = {
             "Authorization": f"Bearer {self.session['accessToken']}",
+            "Content-Type": "application/json",
         }
         headers.update(custom_headers)
         return headers
 
     def _process_api_response(self, url, response, method="GET"):
-        self.log.debug(f"{method} {url} response, OK: {response.ok}, TEXT: {response.text()}")
-        json = None
-        if response.ok:
-            try:
-                json = response.json()
-            except json.JSONDecodeError:
-                pass
-        if not response.ok or not json:
-            self.log.debug(f"{response.status} {response.status_text} {response.headers}")
-        return response.ok, json, response
+        self.log.debug(f"{method} {url}, JSON: {response}")
+        if not response or 'error' in response:
+            if not response:
+                response = {"error": "unknown", "message": "Could not parse JSON response"}
+            message = f"API response errror: {response['error']} {response['message']}"
+            self.log.error(message)
+            return False, response, message
+        return True, response, "API request successful"
 
-    def _api_get_request(self, url, query_params={}, custom_headers={}, timeout=None):
+    def _api_xhr_request(self, method, url, query_params=None, data=None, headers=None, timeout=None):
+        query_params = query_params or {}
+        data = data or {}
+        headers = headers or {}
+        self.log.debug(f"Starting XHR request with METHOD: {method}, URL: {url}, QUERY_PARAMS: {query_params}, DATA: {data}, HEADERS: {headers}, TIMEOUT: {timeout}")
+        random_fn_name = ''.join(random.choices(string.ascii_letters, k=20))
+        js_function = f"""
+        async function (method, url, query_params, data, headers, timeout) {{
+            console.debug('Starting {random_fn_name} with method:', method, 'url:', url, 'query_params:', query_params, 'data:', data, 'headers:', headers, 'timeout:', timeout);
+            const final_url = new URL(url);
+            final_url.search = new URLSearchParams(query_params).toString();
+            return new Promise((resolve, reject) => {{
+                const xhr = new XMLHttpRequest();
+                xhr.open(method, final_url, true);
+                console.debug('Opened XHR request, method:', method, 'final_url:', final_url);
+                for (const [key, value] of Object.entries(headers)) {{
+                    console.debug('Setting header:', key, '=', value);
+                    xhr.setRequestHeader(key, value);
+                }}
+                if (timeout !== null) {{
+                    console.debug('Setting timeout:', timeout);
+                    xhr.timeout = timeout * 1000;
+                }}
+                xhr.onload = function() {{
+                    if (xhr.status >= 200 && xhr.status < 400) {{
+                        console.debug('XHR request succeeded with status:', xhr.status, 'response:', xhr.responseText);
+                        resolve(JSON.parse(xhr.responseText));
+                    }} else {{
+                        console.error('XHR request failed with status:', xhr.status, 'statusText:', xhr.statusText);
+                        reject({{error: xhr.status, message: xhr.statusText}});
+                    }}
+                }};
+                xhr.onerror = function() {{
+                    console.error('XHR request encountered an error with status:', xhr.status, 'statusText:', xhr.statusText);
+                    reject({{error: xhr.status, message: xhr.statusText}});
+                }};
+                xhr.ontimeout = function() {{
+                    console.error('XHR request timed out with status:', xhr.status);
+                    reject({{error: xhr.status, message: 'Request timed out'}});
+                }};
+                if (['PATCH', 'POST'].includes(method)) {{
+                    console.debug('Sending PATCH/POST request with data:', JSON.stringify(data));
+                    xhr.send(JSON.stringify(data));
+                }} else {{
+                    console.debug('Sending GET/DELETE request');
+                    xhr.send();
+                }}
+            }});
+        }}
+        """
+        # Wrap the Javascript function definition in an IIFE
+        js_function_iife = f"""
+        (function() {{
+            window.{random_fn_name} = {js_function};
+        }})();
+        """
+        self.log.debug(f"Generated global JS function {random_fn_name}: {js_function_iife}")
+        self.page.evaluate(js_function_iife)
+
+        js_script = f'(async () => {{ return await window.{random_fn_name}("{method}", "{url}", {json.dumps(query_params)}, {json.dumps(data)}, {json.dumps(headers)}, {timeout if timeout is not None else "null"}); }})()'
+        self.log.debug(f"Generated script to execute global JS function {random_fn_name}: {js_script}")
+        result = self.page.evaluate(js_script)
+
+        js_script = f'delete window.{random_fn_name}'
+        self.log.debug(f"Generated script to delete global JS function {random_fn_name}: {js_script}")
+        self.page.evaluate(js_script)
+
+        return result
+
+    def _api_get_request(self, url, query_params=None, custom_headers=None, timeout=None):
+        query_params = query_params or {}
+        custom_headers = custom_headers or {}
         headers = self._api_request_build_headers(custom_headers)
         kwargs = {
             "headers": headers,
-            "params": query_params,
+            "query_params": query_params,
         }
         if timeout:
             kwargs["timeout"] = timeout
         self.log.debug(f"GET {url} request, query params: {query_params}, headers: {headers}")
-        response = self.page.request.get(url, **kwargs)
+        response = self._api_xhr_request('GET', url, **kwargs)
         return self._process_api_response(url, response)
 
-    def _api_post_request(self, url, data={}, custom_headers={}, timeout=None):
+    def _api_post_request(self, url, data=None, custom_headers=None, timeout=None):
+        data = data or {}
+        custom_headers = custom_headers or {}
         headers = self._api_request_build_headers(custom_headers)
         kwargs = {
             "headers": headers,
@@ -275,10 +347,12 @@ class ChatGPT(Backend):
         if timeout:
             kwargs["timeout"] = timeout
         self.log.debug(f"POST {url} request, data: {data}, headers: {headers}")
-        response = self.page.request.post(url, **kwargs)
+        response = self._api_xhr_request('POST', url, **kwargs)
         return self._process_api_response(url, response, method="POST")
 
-    def _api_patch_request(self, url, data={}, custom_headers={}, timeout=None):
+    def _api_patch_request(self, url, data=None, custom_headers=None, timeout=None):
+        data = data or {}
+        custom_headers = custom_headers or {}
         headers = self._api_request_build_headers(custom_headers)
         kwargs = {
             "headers": headers,
@@ -287,7 +361,7 @@ class ChatGPT(Backend):
         if timeout:
             kwargs["timeout"] = timeout
         self.log.debug(f"PATCH {url} request, data: {data}, headers: {headers}")
-        response = self.page.request.patch(url, **kwargs)
+        response = self._api_xhr_request('PATCH', url, **kwargs)
         return self._process_api_response(url, response, method="PATCH")
 
     def _gen_title(self):
@@ -296,7 +370,7 @@ class ChatGPT(Backend):
         url = f"https://chat.openai.com/backend-api/conversation/gen_title/{self.conversation_id}"
         data = {
             "message_id": self.parent_message_id,
-            "model": self.model,
+            "model": "text-davinci-002-render-sha",
         }
         ok = False
         try:
@@ -325,13 +399,40 @@ class ChatGPT(Backend):
                 return messages
             message = current_item['message']
             if message is not None and 'content' in message and 'author' in message and message['author']['role'] != 'system':
+                message_content = ""
+                if 'parts' in message['content']:
+                    message_content = "".join(message['content']['parts'])
+                elif 'result' in message['content']:
+                    message_content = message['content']['result']
                 messages.append({
                     'id': message['id'],
                     'role': message['author']['role'],
-                    'message': "".join(message['content']['parts']),
+                    'message': message_content,
                     'created_time': datetime.datetime.fromtimestamp(int(message['create_time'])),
                 })
             parent_id = current_item['id']
+
+    def get_plugins(self):
+        if self.session is None:
+            self.refresh_session()
+        query_params = {
+            "offset": 0,
+            "limit": 250,
+            "statuses": "approved",
+        }
+        success, data, user_message = self._api_get_request("https://chat.openai.com/backend-api/aip/p", query_params=query_params)
+        if success:
+            return success, data['items'], user_message
+        return success, data, user_message
+
+    def enable_plugin(self, plugin_id):
+        self.plugin_ids.append(plugin_id)
+        self.plugin_ids = list(set(self.plugin_ids))
+        return True, self.plugin_ids, f"Enabled plugin {plugin_id}"
+
+    def disable_plugin(self, plugin_id):
+        self.plugin_ids.remove(plugin_id)
+        return True, self.plugin_ids, f"Disabled plugin {plugin_id}"
 
     def delete_conversation(self, uuid=None):
         if self.session is None:
@@ -375,7 +476,8 @@ class ChatGPT(Backend):
         if ok:
             history = {}
             for item in json["items"]:
-                item['created_time'] = datetime.datetime.strptime(item['create_time'], "%Y-%m-%dT%H:%M:%S.%f")
+                create_time = item['create_time'].split('.')[0]
+                item['created_time'] = datetime.datetime.strptime(create_time, "%Y-%m-%dT%H:%M:%S")
                 del item['create_time']
                 history[item["id"]] = item
             return ok, history, "Retrieved history"
@@ -404,7 +506,8 @@ class ChatGPT(Backend):
             else:
                 return self._handle_error(json, response, f"Failed to get conversation {uuid}")
 
-    def _ask_stream(self, prompt, title=None, model_customizations={}):
+    def _ask_stream(self, prompt, title=None, request_overrides=None):
+        request_overrides = request_overrides or {}
         if self.session is None:
             self.refresh_session()
 
@@ -431,27 +534,37 @@ class ChatGPT(Backend):
             "parent_message_id": self.parent_message_id,
             "action": "next",
         }
+        models = self.provider.get_capability('models', {})
+        if self.plugin_ids and self.model in models and models[self.model].get('plugins', False):
+            self.log.debug(f"Using plugins: {self.plugin_ids}")
+            request['plugin_ids'] = self.plugin_ids
 
         code = (
             """
             const stream_div = document.createElement('DIV');
             stream_div.id = "STREAM_DIV_ID";
             document.body.appendChild(stream_div);
+            console.log(`STREAM_DIV_ID: ${stream_div.id}`);
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'https://chat.openai.com/backend-api/conversation');
+            const url = "https://chat.openai.com/backend-api/conversation";
+            xhr.open('POST', url);
             xhr.setRequestHeader('Accept', 'text/event-stream');
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.setRequestHeader('Authorization', 'Bearer BEARER_TOKEN');
             xhr.responseType = 'stream';
+            console.log(`Opened XHR streaming request to ${url}`);
             xhr.onreadystatechange = function() {
+              console.debug(`XHR state change: readyState: ${xhr.readyState}`);
               var newEvent;
               const interrupt_div = document.getElementById('INTERRUPT_DIV_ID');
               if(xhr.readyState == 3 || xhr.readyState == 4) {
                 const newData = xhr.response.substr(xhr.seenBytes);
+                console.log(`Got new data: ${newData}`);
                 try {
                   const newEvents = newData.split(/\\n\\n/).reverse();
                   newEvents.shift();
                   if(newEvents[0] == "data: [DONE]") {
+                    console.log('Got done event');
                     newEvents.shift();
                   }
                   if(newEvents.length > 0) {
@@ -473,6 +586,7 @@ class ChatGPT(Backend):
               if(xhr.readyState == 4 && (typeof interrupt_div === 'undefined' || interrupt_div === null)) {
                 const eof_div = document.createElement('DIV');
                 eof_div.id = "EOF_DIV_ID";
+                console.log(`Adding EOF_DIV_ID: ${eof_div.id}`);
                 document.body.appendChild(eof_div);
               }
               if(typeof interrupt_div !== 'undefined' && interrupt_div !== null) {
@@ -496,6 +610,9 @@ class ChatGPT(Backend):
         self.page.evaluate(code)
 
         last_event_msg = ""
+        last_tool_event_msg = ""
+        current_message_type = ""
+        last_message_type = ""
         start_time = time.time()
         while True:
             if not self.streaming:
@@ -511,18 +628,31 @@ class ChatGPT(Backend):
                 continue
 
             full_event_message = None
+            tool_event_message = None
 
             try:
                 event_raw = base64.b64decode(conversation_datas[0].inner_html())
                 if len(event_raw) > 0:
                     event = json.loads(event_raw)
-                    if event is not None:
+                    if event is not None and "message" in event:
+                        # util.debug.console(event["message"])
                         self.parent_message_id = event["message"]["id"]
                         self.conversation_id = event["conversation_id"]
-                        full_event_message = "\n".join(
-                            event["message"]["content"]["parts"]
-                        )
+                        if "content" in event["message"]:
+                            if "parts" in event["message"]["content"]:
+                                full_event_message = "\n".join(
+                                    event["message"]["content"]["parts"]
+                                )
+                                current_message_type = "message"
+                            # Using a tool.
+                            elif event["message"]["content"]["content_type"] == "code":
+                                tool_event_message = event["message"]["content"]["text"]
+                                current_message_type = "tool"
             except Exception:
+                try:
+                    self.log.error(f"Got bad event event: {event_raw}")
+                except Exception:
+                    self.log.error("Unknown streaming error")
                 yield (
                     "Failed to read response from ChatGPT.  Tips:\n"
                     " * Try again.  ChatGPT can be flaky.\n"
@@ -531,9 +661,17 @@ class ChatGPT(Backend):
                 )
                 break
 
+            if last_message_type and last_message_type != current_message_type:
+                yield "\n\n"
             if full_event_message is not None:
                 chunk = full_event_message[len(last_event_msg):]
                 self.message_clipboard = last_event_msg = full_event_message
+                last_message_type = "message"
+                yield chunk
+            elif tool_event_message is not None:
+                chunk = tool_event_message[len(last_tool_event_msg):]
+                last_tool_event_msg = tool_event_message
+                last_message_type = "tool"
                 yield chunk
 
             # if we saw the eof signal, this was the last event we
@@ -566,7 +704,7 @@ class ChatGPT(Backend):
         ).replace("INTERRUPT_DIV_ID", self.interrupt_div_id)
         self.page.evaluate(code)
 
-    def ask(self, message, title=None, model_customizations={}):
+    def ask(self, message, title=None, request_overrides=None):
         """
         Send a message to chatGPT and return the response.
 
@@ -576,14 +714,16 @@ class ChatGPT(Backend):
         Returns:
             str: The response received from OpenAI.
         """
-        llm = self.make_llm()
+        request_overrides = request_overrides or {}
+        customizations = self.provider.get_customizations()
+        llm = self.override_llm or self.make_llm(customizations)
         try:
-            response = llm(message)
+            response = llm([HumanMessage(content=message)])
         except ValueError as e:
             return False, message, e
         return True, response.content, "Response received"
 
-    def ask_stream(self, message, title=None, model_customizations={}):
+    def ask_stream(self, message, title=None, request_overrides=None):
         """
         Send a message to chatGPT and stream the response.
 
@@ -593,10 +733,12 @@ class ChatGPT(Backend):
         Returns:
             str: The response received from OpenAI.
         """
-        args = self.streaming_args()
-        llm = self.make_llm(args)
+        request_overrides = request_overrides or {}
+        customizations = self.provider.get_customizations()
+        customizations.update(self.streaming_args(interrupt_handler=True))
+        llm = self.override_llm or self.make_llm(customizations)
         try:
-            response = llm(message)
+            response = llm([HumanMessage(content=message)])
         except ValueError as e:
             return False, message, e
         return True, response.content, "Response received"

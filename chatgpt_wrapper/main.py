@@ -5,9 +5,10 @@ import sys
 from chatgpt_wrapper.version import __version__
 import chatgpt_wrapper.core.constants as constants
 from chatgpt_wrapper.core.config import Config
-from chatgpt_wrapper.backends.browser.chatgpt import ChatGPT
+from chatgpt_wrapper.core import util
+from chatgpt_wrapper.backends.browser.backend import BrowserBackend
 from chatgpt_wrapper.backends.browser.repl import BrowserRepl
-from chatgpt_wrapper.backends.openai.repl import ApiRepl
+from chatgpt_wrapper.backends.api.repl import ApiRepl
 
 def main():
 
@@ -72,11 +73,11 @@ def main():
         help="set preferred browser; 'firefox' 'chromium' or 'webkit'",
     )
     parser.add_argument(
-        "-m",
-        "--model",
-        choices=['default', 'legacy-paid', 'legacy-free', 'gpt4'],
+        "-r",
+        "--preset",
+        metavar="PRESET",
         action="store",
-        help="set preferred model",
+        help="Preset to use on startup",
     )
 
     parser.add_argument(
@@ -102,7 +103,7 @@ def main():
 
     if args.database is not None:
         config.set('database', args.database)
-    config.set('chat.streaming', args.stream)
+    config.set('model.streaming', args.stream)
     if args.log is not None:
         config.set('chat.log.enabled', True)
         config.set('chat.log.filepath', args.log)
@@ -113,18 +114,28 @@ def main():
         config.set('browser.provider', args.browser)
     if args.debug:
         config.set('browser.debug', True)
-    if args.model is not None:
-        config.set('chat.model', args.model)
+        config.set('log.console.level', 'debug')
+        config.set('debug.log.enabled', True)
+        config.set('debug.log.level', 'debug')
+    if args.preset is not None:
+        config.set('model.default_preset', args.preset)
 
     command = None
     if len(args.params) == 1 and args.params[0] in constants.SHELL_ONE_SHOT_COMMANDS:
         command = args.params[0]
 
     backend = config.get('backend')
+    # TODO: Remove this deprecation warning later.
+    def backend_deprecation_warning(old, new):
+        util.print_status_message(False, f"WARNING: backend '{old}' has been renamed to '{new}', and support for the old name will be removed in a future release. Please update your config file to use '{new}' for the 'backend:' setting.")
     if backend == 'chatgpt-browser':
+        backend_deprecation_warning('chatgpt-browser', 'browser')
+    if backend == 'chatgpt-api':
+        backend_deprecation_warning('chatgpt-api', 'api')
+    if backend == 'browser' or backend == 'chatgpt-browser':
         if command == 'reinstall':
             print('Reinstalling...')
-            temp_backend = ChatGPT(config)
+            temp_backend = BrowserBackend(config)
             temp_backend.destroy_primary_profile()
             del temp_backend
         if command in ['install', 'reinstall']:
@@ -136,7 +147,7 @@ def main():
             )
             config.set('browser.debug', True)
         shell = BrowserRepl(config)
-    elif backend == 'chatgpt-api':
+    elif backend == 'api' or backend == 'chatgpt-api':
         if command in ['install', 'reinstall']:
             print(
                 "\n"
