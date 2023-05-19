@@ -1,6 +1,7 @@
 import argparse
 
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 from chatgpt_wrapper.backends.openai.api import OpenAIAPI
 from chatgpt_wrapper.core.config import Config
@@ -11,6 +12,7 @@ def create_application(name, config=None, timeout=60, proxy=None):
     config.set('debug.log.enabled', True)
     gpt = OpenAIAPI(config)
     app = Flask(name)
+    CORS(app, resources={r"/*": {"origins": "https://localhost:7264"}})
 
     def _error_handler(message, status_code=500):
         return jsonify({"success": False, "error": str(message)}), status_code
@@ -127,6 +129,7 @@ def create_application(name, config=None, timeout=60, proxy=None):
     @app.route("/history/<int:user_id>", methods=["GET"])
     def get_history(user_id):
         """
+        
         Retrieve conversation history for a user.
 
         Path:
@@ -162,10 +165,9 @@ def create_application(name, config=None, timeout=60, proxy=None):
 
     return app
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=5000)
     args = parser.parse_args()
     app = create_application("chatgpt")
-    app.run(host="0.0.0.0", port=args.port, threaded=False)
+    app.run(host="localhost", port=5000, threaded=False)
