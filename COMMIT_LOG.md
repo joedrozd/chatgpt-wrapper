@@ -1,3 +1,253 @@
+### v0.14.0 - 11/07/2023
+
+#### ChatGPT Wrapper has been re-branded to LLM Workflow Engine
+
+Currently, all functionality is the same.
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+* Default configuration and data directories have changed
+  * A deprecation warning will be thrown on startup if the legacy directories are being used, with instructions on how to migrate to the new default locations.
+  * Legacy locations will continue to be supported until at least the next minor point release
+* Environment variable names have changed
+  * `CHATGPT_WRAPPER_CONFIG_DIR` renamed to `LWE_CONFIG_DIR`
+  * `CHATGPT_WRAPPER_CONFIG_PROFILE` renamed to `LWE_CONFIG_PROFILE`
+  * `CHATGPT_WRAPPER_DATA_DIR` renamed to `LWE_DATA_DIR`
+* Log file locations have changed: `chatgpt` -> `lwe`
+
+#### Commit log
+
+* **Tue Jul 11 2023:** add deprecation warning for chatgpt binary
+* **Tue Jul 11 2023:** ChatGPT Wrapper -> LLM Workflow Engine rebranding
+* **Tue Jul 11 2023:** throw warning messages for legacy config/data dirs
+* **Tue Jul 11 2023:** display max submission tokens in runtime config
+* **Tue Jul 11 2023:** fix spelling error
+* **Mon Jul 10 2023:** document installing examples
+* **Mon Jul 10 2023:** mention more examples in features list
+* **Mon Jul 10 2023:** polish functions doc
+* **Sun Jul 09 2023:** flesh out workflow doc
+* **Sun Jul 09 2023:** examples plugin, installs example config files, plus more example files
+
+### v0.13.2 - 08/07/2023
+
+* **Sat Jul 08 2023:** support running workflows from CLI args, --workflow/--workflow-args
+* **Sat Jul 08 2023:** clean up display of workflows in /workflows command
+* **Sat Jul 08 2023:** bump textract version
+* **Sat Jul 08 2023:** add max_length param to text_extractor module
+* **Wed Jun 28 2023:** update docker base container, remove VNC access, API backend only
+* **Wed Jun 28 2023:** remove deprecated openai chat models
+
+### v0.13.1 - 27/06/2023
+
+* **Tue Jun 27 2023:** remove outdated openai chat models
+* **Tue Jun 27 2023:** touch up new Sphinx documentation
+* **Tue Jun 27 2023:** update doc for using GPT-4 in Python module
+* **Tue Jun 27 2023:** prevent function recursion when functions are forced (for now)
+* **Tue Jun 27 2023:** add function_call to model_kwargs
+* **Tue Jun 27 2023:** bump langchain dep
+* **Tue Jun 27 2023:** add return_only property to API backend, suppresses console output
+* **Tue Jun 27 2023:** escape jinja syntax in system message
+* **Tue Jun 27 2023:** manage override preset on override_llm invocation
+* **Tue Jun 27 2023:** tighten rules for workflow spec generation template
+* **Tue Jun 27 2023:** fine-tune workflow spec/generation templates
+* **Mon Jun 26 2023:** add doc for how it works, installation, initial setup, presets, python module
+* **Mon Jun 26 2023:** display playbook descriptions in /workflows command
+* **Mon Jun 26 2023:** add descriptions for system presets
+* **Mon Jun 26 2023:** tweak installation instructions
+* **Mon Jun 26 2023:** autosection labels, pygments highlighting
+* **Mon Jun 26 2023:** theme config, logo, index/installation pages
+* **Mon Jun 26 2023:** fix syntax for RST formatting
+* **Sun Jun 25 2023:** Sphinx documentation scaffolding
+* **Sun Jun 25 2023:** require at least version 0.20.1 of docutils
+* **Sun Jun 25 2023:** add support for langchain tools as functions
+* **Sun Jun 25 2023:** add remove_prefix util function
+
+### v0.13.0 - 25/06/2023
+
+* **Sun Jun 25 2023:** documentation for OpenAI functions
+* **Sun Jun 25 2023:** add function descriptions to /functions command
+* **Sun Jun 25 2023:** allow recursive function calling for return_on_function_response
+* **Sun Jun 25 2023:** add core test function
+* **Sun Jun 25 2023:** better traceback from function instance loading errors
+* **Sun Jun 25 2023:** add missing docutils requirement
+* **Sun Jun 25 2023:** bump openai dependency
+* **Sun Jun 25 2023:** roll custom textract, current package not well maintained
+* **Sat Jun 24 2023:** build open function spec from function type hints and doc if .config.yaml file is not provided
+* **Sat Jun 24 2023:** move more template logic into template manager class
+* **Fri Jun 23 2023:** prevent duplicate loggers
+* **Fri Jun 23 2023:** dynamically check/build function definitions for LLM calls and token counting
+* **Thu Jun 22 2023:** pass messages around as dicts, transform at edges
+* **Thu Jun 22 2023:** allow message_metadata to be NULL
+* **Thu Jun 22 2023:** DRY message objects
+* **Wed Jun 21 2023:** bump langchain dep, clean up some monkey patching
+* **Wed Jun 21 2023:** multi-function processing with final LLM output
+* **Tue Jun 20 2023:** only expand functions once
+* **Tue Jun 20 2023:** refactor functions to be callable classes, default YAML config in separate file
+* **Sun Jun 18 2023:** fix monkey patch for langchain FunctionMessage
+* **Sun Jun 18 2023:** listing/running functions, allow returning directly after function calls
+* **Sun Jun 18 2023:** sort system message alias list in /system-messages
+* **Sun Jun 18 2023:** change checkmark indicator to green circle
+* **Sun Jun 18 2023:** add post revision creation instructions for re-importing data
+* **Sun Jun 18 2023:** script to automate creating new schema revisions
+* **Sun Jun 18 2023:** abstract determining message content from message type
+* **Sat Jun 17 2023:** filter full message dict before sending to LLM
+* **Sat Jun 17 2023:** add message_metadata to messages table, refactoring in prep for full functions support
+* **Sat Jun 17 2023:** clean up /config display, add database entry to file section
+* **Sat Jun 17 2023:** add cli args for template/plugin/function/workflow/preset dirs, clean up cli doc
+* **Fri Jun 16 2023:** include header in ansible module doc, provide full/summary modes
+* **Fri Jun 16 2023:** limit length of title generation message
+* **Fri Jun 16 2023:** util functions to extract Ansible doc to Markdown
+* **Thu Jun 15 2023:** properly update updated_time for conversations on new message
+* **Thu Jun 15 2023:** store provider/model/preset per message, add message_type field
+* **Thu Jun 15 2023:** expose LWE_SCHEMA_MIGRATION_SQLALCHEMY_URL environment variable for autogenerating migrations
+* **Thu Jun 15 2023:** loosen sqlalchemy requirements
+* **Thu Jun 15 2023:** add post_response method, for actions after response has been received
+
+### v0.12.3 - 25/06/2023
+
+* **Sun Jun 25 2023:** roll custom textract, current package not well maintained
+* **Sun Jun 25 2023:** bump openai dependency
+
+### v0.12.2 - 15/06/2023
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+GPT-4 models are currently broken in the browser backend, due to increased 'anti-bot' security measures implemented by OpenAI on
+chat.openai.com
+
+If you'd like to help fix this issue, see https://github.com/llm-workflow-engine/llm-workflow-engine/issues/311
+
+#### Commit log
+
+* **Thu Jun 15 2023:** add warning, GPT-4 models broken on browser backend
+* **Wed Jun 14 2023:** add function manager
+* **Wed Jun 14 2023:** add /preset-edit command, to edit existing presets, ensure load_preset() succeeds
+* **Wed Jun 14 2023:** add creative writer system message, use in system preset
+* **Wed Jun 14 2023:** init_system_message when init_provider, missing conversation preset
+* **Wed Jun 14 2023:** openai functions: ability to configure functions in presets, store assistant function reply
+* **Wed Jun 14 2023:** add system message to chatbot/creative writing presets
+* **Wed Jun 14 2023:** pass through provider customization when a key's value is None, skip completions
+* **Wed Jun 14 2023:** empty user metadata field in /preset-save removes field from preset
+* **Tue Jun 13 2023:** add workflow review template
+* **Tue Jun 13 2023:** add new openai chat models released 0613
+
+### v0.12.1 - 13/06/2023
+
+* **Tue Jun 13 2023:** monkey patch / version lock langchain with stream interruption fixes, fixes #274, fixes #180
+
+### v0.12.0 - 13/06/2023
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+* The base module namespace has been changed from `chatgpt_wrapper` to `lwe` in preparation for a re-branding.
+  This affects all uses of the Python module, the change is straightforward:
+
+  OLD:
+
+  ```python
+  from chatgpt_wrapper import ApiBackend
+  from chatgpt_wrapper.core.config import Config
+  ```
+
+  NEW:
+  ```python
+  from lwe import ApiBackend
+  from lwe.core.config import Config
+  ```
+* For packaged plugins, the plugin namespace has changed from `chatgpt_wrapper` to `lwe`.
+
+### v0.11.7 - 12/06/2023
+
+* **Mon Jun 12 2023:** delete confirmation for presets/workflows
+* **Mon Jun 12 2023:** allow copying system templates to user directories
+* **Mon Jun 12 2023:** allow LWE_ environment variable overrides of templates/plugins/presets/workflows dirs
+* **Mon Jun 12 2023:** configuration overrides for user templates/plugins/presets/workflows dirs
+* **Sun Jun 11 2023:** doc and examples for lwe_input action plugin
+* **Sun Jun 11 2023:** output workflow dirs for /config
+* **Sun Jun 11 2023:** add remaining customization_config values to openai providers
+* **Sun Jun 11 2023:** don't include dict values as empty completions
+
+### v0.11.6 - 10/06/2023
+
+* **Sat Jun 10 2023:** /preset-show defaults to current preset
+* **Sat Jun 10 2023:** fix api temperature check example
+* **Sat Jun 10 2023:** allow storing system message with a preset, allow storing non-aliased system messages
+* **Sat Jun 10 2023:** reset provider customizations loading a provider
+* **Sat Jun 10 2023:** upgrade presets schema to be more robust
+* **Sat Jun 10 2023:** pass config/data dirs to schema updater config, generalize message
+* **Fri Jun 09 2023:** better output for example social media workflow
+* **Fri Jun 09 2023:** better status message for opening editor
+* **Fri Jun 09 2023:** replace pause with lwe_input
+* **Thu Jun 08 2023:** cleaner infinite task workflow approach
+* **Thu Jun 08 2023:** llm-iterative-tasks workflow, infinite loop until user exits
+
+### v0.11.5 - 08/06/2023
+
+* **Thu Jun 08 2023:** rename lwe module to lwe_llm module
+* **Thu Jun 08 2023:** add custom lwe_input action plugin, with editor support
+* **Thu Jun 08 2023:** convert text_extractor to textract, many more extensions supported
+* **Thu Jun 08 2023:** html_extractor -> text_extractor, add PDF support, scrub non-UTF-8 in text files
+
+### v0.11.4 - 08/06/2023
+
+* **Thu Jun 08 2023:** don't re-init provider on new conversation
+* **Thu Jun 08 2023:** best guess cast random dict model customizations, recurse dicts when setting customization values
+* **Thu Jun 08 2023:** rebuild completions on /preset-load, activate preset on /preset-save, init default provider when deleting active preset
+* **Wed Jun 07 2023:** rebranding writeup.
+* **Wed Jun 07 2023:** example workflow for generating and posting social media content
+* **Tue Jun 06 2023:** example workflow: summarize HTML page
+* **Tue Jun 06 2023:** add html_extractor workflow module
+* **Tue Jun 06 2023:** syntax cleanup
+
+### v0.11.3 - 06/06/2023
+
+* **Tue Jun 06 2023:** add multi-workflow example
+* **Tue Jun 06 2023:** fix passing args to workflows
+* **Tue Jun 06 2023:** replace ansible-runner with ansible-playbook subprocess
+* **Tue Jun 06 2023:** kill dead file
+* **Tue Jun 06 2023:** clean up prompt formatting
+
+### v0.11.2 - 05/06/2023
+
+* **Mon Jun 05 2023:** add template/variable support for workflows
+* **Mon Jun 05 2023:** tweak lwe ansible module exit data
+* **Mon Jun 05 2023:** move template manager instantiation to backend
+* **Mon Jun 05 2023:** document running workflows directly with ansible-playbook
+* **Mon Jun 05 2023:** add default ansible callback config
+
+### v0.11.1 - 05/06/2023
+
+* **Mon Jun 05 2023:** fix missing workflow directories
+
+### v0.11.0 - 04/06/2023
+
+* **Sun Jun 04 2023:** fixes to workflow CLI help
+* **Sun Jun 04 2023:** add documentation for workflows
+* **Sun Jun 04 2023:** flesh out lwe doc
+* **Sun Jun 04 2023:** migrate workflow from plugin to API backend
+* **Sun Jun 04 2023:** add workflow show/edit/delete commands
+* **Sun Jun 04 2023:** output YAML in workflow runs
+* **Sun Jun 04 2023:** allow both user IDs and usernames in user arg to lwe module
+* **Sun Jun 04 2023:** refine and comment example workflows
+* **Sun Jun 04 2023:** save conversation ID in lwe results dict
+* **Sun Jun 04 2023:** convert lwe ansible module to LWE API backend
+* **Sun Jun 04 2023:** add backend_options.default_user, backend_options.default_conversation_id to config, backend loading of default user/conversation
+* **Sat Jun 03 2023:** provide default file for extravars
+* **Sat Jun 03 2023:** support passing workflow args in /workflow-run
+* **Sat Jun 03 2023:** include more example workflows, mechanism for collecting var_prompt variables in playbooks
+* **Sat Jun 03 2023:** initial ansible playbook integration for workflows
+* **Sun May 28 2023:** bold styling for user prompt
+* **Sun May 28 2023:** color-code role labels in /chat output
+* **Mon May 22 2023:** very basic workflow manager and workflow base class, with test workflow in Prefect
+
+### v0.10.7 - 27/05/2023
+
+* **Sat May 27 2023:** allow setting system message alias in config (model.default_system_message) or CLI (-s/--system-message)
+* **Sat May 27 2023:** read both extra params and input file for one-shot mode
+* **Thu May 25 2023:** add -i/--input-file argument
+* **Mon May 22 2023:** restore SQLAlchemy compat with 1.4.x
+* **Thu May 18 2023:** kill lingering deprecated chatgpt-browser/chatgpt-api
+
 ### v0.10.6 - 18/05/2023
 
 * **Thu May 18 2023:** fix streaming when overriding a preset in templates

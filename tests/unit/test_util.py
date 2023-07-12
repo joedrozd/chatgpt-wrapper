@@ -2,7 +2,7 @@ import pytest
 import pyperclip
 import os
 
-from chatgpt_wrapper.core.util import (introspect_commands,
+from lwe.core.util import (introspect_commands,
                                        command_with_leader,
                                        merge_dicts,
                                        underscore_to_dash,
@@ -23,9 +23,9 @@ from chatgpt_wrapper.core.util import (introspect_commands,
                                        open_temp_file,
                                        get_package_root,
                                        )
-import chatgpt_wrapper.core.constants as constants
-from chatgpt_wrapper.core.error import NoInputError, LegacyCommandLeaderError
-from chatgpt_wrapper.core.config import Config
+import lwe.core.constants as constants
+from lwe.core.error import NoInputError, LegacyCommandLeaderError
+from lwe.core.config import Config
 
 class TestClass:
     class DummyClass:
@@ -121,13 +121,16 @@ class TestClass:
             {'role': 'user', 'message': 'Hi'},
             {'role': 'assistant', 'message': 'How can I help you?'}
         ]
-        content = conversation_from_messages(messages)
-        assert "**System**:" in content
-        assert "**User**:" in content
-        assert "**Assistant**:" in content
-        assert "Hello" in content
-        assert "Hi" in content
-        assert "How can I help you?" in content
+        conversation_parts = conversation_from_messages(messages)
+        assert conversation_parts[0]["role"] == "system"
+        assert conversation_parts[0]["display_role"] == "**System**:"
+        assert conversation_parts[0]["message"] == "Hello"
+        assert conversation_parts[1]["role"] == "user"
+        assert conversation_parts[1]["display_role"] == "**User**:"
+        assert conversation_parts[1]["message"] == "Hi"
+        assert conversation_parts[2]["role"] == "assistant"
+        assert conversation_parts[2]["display_role"] == "**Assistant**:"
+        assert conversation_parts[2]["message"] == "How can I help you?"
 
     def test_parse_shell_input(self):
         with pytest.raises(EOFError):
@@ -174,4 +177,4 @@ class TestClass:
     def test_get_package_root(self):
         config = Config(profile='test')
         package_root = get_package_root(config)
-        assert package_root.endswith("chatgpt_wrapper")
+        assert package_root.endswith("lwe")

@@ -10,24 +10,32 @@ with open("README.md", "r", encoding="utf-8") as fh:
 with open('requirements.txt') as f:
     install_requirement = f.readlines()
 
-with open(path.join(FILE_DIR, 'chatgpt_wrapper', 'version.py')) as f:
+with open(path.join(FILE_DIR, 'lwe', 'version.py')) as f:
     version = re.match(r'^__version__ = "([\w\.]+)"$', f.read().strip())[1]
 
 setup(
-    name="chatGPT",
+    name="llm-workflow-engine",
     version=version,
-    author="Mahmoud Mabrouk",
+    author="Mahmoud Mabrouk, Chad Phillips",
     author_email="mahmoudmabrouk.mail@gmail.com",
-    description="CLI wrapper around common LLMs, with a focus on OpenAI's models",
+    description="CLI tool and workflow manager for common LLMs, with a focus on OpenAI's models",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mmabrouk/chatgpt-wrapper",
+    url="https://github.com/llm-workflow-engine/llm-workflow-engine",
     packages=find_packages(),
     package_data={
-        'chatgpt_wrapper': [
+        'lwe': [
             'backends/api/schema/alembic.ini',
             'backends/api/schema/alembic/*',
             'backends/api/schema/alembic/**/*',
+            'functions/*',
+            'functions/**/*',
+            'presets/*',
+            'presets/**/*',
+            'templates/*',
+            'templates/**/*',
+            'workflows/*',
+            'workflows/**/*',
         ],
     },
     install_requires=install_requirement,
@@ -39,9 +47,11 @@ setup(
     python_requires=">=3.7",
     entry_points={
         "console_scripts": [
-            "chatgpt = chatgpt_wrapper.main:main",
+            # TODO: Remove this after deprecation period.
+            "chatgpt = lwe.main:main_chatgpt_deprecated",
+            "lwe = lwe.main:main",
         ],
-        "chatgpt_wrapper_plugins": [],
+        "lwe_plugins": [],
     },
     scripts=["postinstall.sh"],
 )

@@ -13,7 +13,42 @@
 backend: api
 # The database connection string, in a format SQLAlchemy understands.
 # DO NOT USE THE LINE AS IT IS WRITTEN BELOW, IT ONLY ILLUSTRATES THE DEFAULT LOCATION.
-# database: sqlite:////home/[username]/.local/share/chatgpt-wrapper/profiles/default/storage.db
+# database: sqlite:////home/[username]/.local/share/llm-workflow-engine/profiles/default/storage.db
+
+
+##########################################################
+# Directory settings.
+##########################################################
+# Customize user directory locations.
+#
+# Directories are scanned by their order in the list. System directories for these
+# settings are automatically included and are searched with the lowest priority.
+#
+# For presets and workflows, later files with the same name override earlier ones.
+# For plugins and templates, first found wins.
+#
+# The following token are available:
+# - $HOME: The user's home directory
+# - $CONFIG_DIR: The configuration directory
+# - $PROFILE: The active profile
+directories:
+  templates:
+    # New templates created in the CLI are saved to the first directory in the list.
+    - $CONFIG_DIR/profiles/$PROFILE/templates
+    - $CONFIG_DIR/templates
+  # NOTE: This setting is only available on the following backends: api
+  presets:
+    - $CONFIG_DIR/presets
+    # New presets created in the CLI are saved to the last directory in the list.
+    - $CONFIG_DIR/profiles/$PROFILE/presets
+  plugins:
+    - $CONFIG_DIR/profiles/$PROFILE/plugins
+    - $CONFIG_DIR/plugins
+  # NOTE: This setting is only available on the following backends: api
+  workflows:
+    - $CONFIG_DIR/workflows
+    # New workflows created in the CLI are saved to the last directory in the list.
+    - $CONFIG_DIR/profiles/$PROFILE/workflows
 
 
 ##########################################################
@@ -54,6 +89,10 @@ model:
   # The preset to use on startup.
   # See '/help presets' for more information.
   default_preset: null
+  # The alias name of the system message to use on startup.
+  # Can be 'default' for the default system message, or another
+  # alias name defined in the 'system_message' section.
+  default_system_message: default
   # If true, responses will be streamed in real time (no markdown formatting).
   # By default, streaming is enabled in the REPL for supported providers, and
   # disabled otherwise.
@@ -75,7 +114,7 @@ chat:
     # Enable logging to a file.
     enabled: false
     # Full path to the log file.
-    filepath: chatgpt.log
+    filepath: lwe.log
 
 
 ##########################################################
@@ -118,7 +157,7 @@ debug:
     # Enable to log debug messages.
     enabled: false
     # Full path to the log file.
-    filepath: /tmp/chatgpt-debug.log
+    filepath: /tmp/lwe-debug.log
     # Message format.
     format: '%(name)s - %(asctime)s - %(levelname)s - %(message)s'
     # Message level (must be valid Python logging module level).
