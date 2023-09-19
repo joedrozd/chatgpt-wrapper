@@ -12,7 +12,7 @@ def create_application(name, config=None, timeout=60, proxy=None):
     config.set('debug.log.enabled', True)
     gpt = ApiBackend(config)
     app = Flask(name)
-    CORS(app, resources={r"/*": {"origins": "https://localhost:7264"}})
+    CORS(app, resources={r"/*": {"origins": "https://chatgpttesterfront.azurewebsites.net/"}})
 
     def _error_handler(message, status_code=500):
         return jsonify({"success": False, "error": str(message)}), status_code
