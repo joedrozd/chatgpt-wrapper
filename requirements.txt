@@ -7,6 +7,7 @@ cohere>=4.3.1
 docutils>=0.20.1
 email-validator
 Flask
+flask_cors
 huggingface-hub>=0.13.2
 Jinja2
 langchain==0.0.217
@@ -21,6 +22,7 @@ pydantic-computed
 pyperclip
 python-frontmatter
 PyYAML
+PyPDF2
 rich
 textract @ git+https://github.com/thehunmonkgroup/textract@41c8a14de9facbfe21a1881cda49ced67b3bb5a4
 sqlalchemy>=1.4.48
