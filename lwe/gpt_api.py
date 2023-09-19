@@ -3,8 +3,8 @@ import argparse
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from chatgpt_wrapper import ApiBackend
-from chatgpt_wrapper.core.config import Config
+from lwe import ApiBackend
+from lwe.core.config import Config
 
 
 def create_application(name, config=None, timeout=60, proxy=None):

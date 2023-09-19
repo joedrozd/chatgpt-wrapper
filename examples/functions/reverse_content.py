@@ -1,4 +1,4 @@
-from lwe.core.function import Function
+from chatgpt_wrapper.core.function import Function
 
 class ReverseContent(Function):
     def __call__(self, content: str) -> dict:

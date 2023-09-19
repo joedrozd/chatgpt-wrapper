@@ -2,7 +2,7 @@ import pytest
 import pyperclip
 import os
 
-from lwe.core.util import (introspect_commands,
+from chatgpt_wrapper.core.util import (introspect_commands,
                                        command_with_leader,
                                        merge_dicts,
                                        underscore_to_dash,
@@ -23,9 +23,9 @@ from lwe.core.util import (introspect_commands,
                                        open_temp_file,
                                        get_package_root,
                                        )
-import lwe.core.constants as constants
-from lwe.core.error import NoInputError, LegacyCommandLeaderError
-from lwe.core.config import Config
+import chatgpt_wrapper.core.constants as constants
+from chatgpt_wrapper.core.error import NoInputError, LegacyCommandLeaderError
+from chatgpt_wrapper.core.config import Config
 
 class TestClass:
     class DummyClass:

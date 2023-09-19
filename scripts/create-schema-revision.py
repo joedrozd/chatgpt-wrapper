@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from alembic import command
 from alembic.config import Config as AlembicConfig
-from lwe.core.config import Config
-import lwe.core.util as util
+from chatgpt_wrapper.core.config import Config
+import chatgpt_wrapper.core.util as util
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

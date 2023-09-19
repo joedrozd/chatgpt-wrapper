@@ -5,9 +5,9 @@ import pyperclip
 
 from jinja2 import Environment, Template
 
-from lwe.core.config import Config
-from lwe.core.template import TemplateManager
-import lwe.core.util as util
+from chatgpt_wrapper.core.config import Config
+from chatgpt_wrapper.core.template import TemplateManager
+import chatgpt_wrapper.core.util as util
 
 TEST_DIR = os.path.join(tempfile.gettempdir(), 'lwe_test')
 TEST_CONFIG_DIR = os.path.join(TEST_DIR, 'config')

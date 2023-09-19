@@ -3,7 +3,7 @@ import re
 from pydantic import BaseModel, Field
 from typing import List
 
-from lwe.core.function import Function
+from chatgpt_wrapper.core.function import Function
 
 class Sentiment(BaseModel):
     name: str = Field(..., description="Single word sentiment description")
