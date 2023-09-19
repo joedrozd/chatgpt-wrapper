@@ -2,7 +2,6 @@ import argparse
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask import Flask, render_template
 from lwe import ApiBackend
 from lwe.core.config import Config
 
@@ -16,9 +15,7 @@ def create_application(name, config=None, timeout=60, proxy=None):
 
     def _error_handler(message, status_code=500):
         return jsonify({"success": False, "error": str(message)}), status_code
-    @app.route('/')
-    def home():
-        return render_template('index.html')
+    
 
     @app.route("/conversations", methods=["POST"])
     def ask():
