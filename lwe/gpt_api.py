@@ -168,9 +168,9 @@ def create_application(name, config=None, timeout=60, proxy=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=5000)
+    parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     app = create_application("chatgpt")
-    app.run(host="localhost", port=5000, threaded=False)
+    app.run(host="localhost", port=8000, threaded=False)
 
     
