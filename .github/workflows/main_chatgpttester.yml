@@ -61,3 +61,5 @@ jobs:
           app-name: 'ChatGPTtester'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_2BF9C27CD7054D78B0307C931EE79C25 }}
+      - name: Run lwe/gpt_api.py
+        run: python lwe/gpt_api.py --port 5000
