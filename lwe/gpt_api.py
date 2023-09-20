@@ -3,7 +3,7 @@ import argparse
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from lwe import ApiBackend
+from lwe.backends.api import ApiBackend
 from lwe.core.config import Config
 
 
