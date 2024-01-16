@@ -5,6 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from lwe.backends.api.orm import Manager, User
 
+
 class UserManager(Manager):
     def _hash_password(self, password):
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
@@ -16,7 +17,7 @@ class UserManager(Manager):
 
     def get_by_user_id(self, user_id):
         try:
-            user = self.orm.get_user(user_id)
+            user = self.orm_get_user(user_id)
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to get user: {str(e)}")
         return True, user, self.user_found_message(user)
@@ -24,9 +25,7 @@ class UserManager(Manager):
     def get_by_username(self, username):
         username = username.lower()
         try:
-            user = self.orm.session.query(User).filter(
-                (User.username == username)
-            ).first()
+            user = self.session.query(User).filter((User.username == username)).first()
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to get user: {str(e)}")
         return True, user, self.user_found_message(user)
@@ -34,14 +33,16 @@ class UserManager(Manager):
     def get_by_username_or_email(self, identifier):
         identifier = identifier.lower()
         try:
-            user = self.orm.session.query(User).filter(
-                (User.username == identifier) | (User.email == identifier)
-            ).first()
+            user = (
+                self.session.query(User)
+                .filter((User.username == identifier) | (User.email == identifier))
+                .first()
+            )
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to get user: {str(e)}")
         return True, user, self.user_found_message(user)
 
-    def register(self, username, email, password, default_preset='', preferences=None):
+    def register(self, username, email, password, default_preset="", preferences=None):
         preferences = preferences or {}
         username = username.lower()
         if email:
@@ -51,9 +52,16 @@ class UserManager(Manager):
         # Check if the username or email is equal to the email of an existing user.
         if email:
             try:
-                existing_user = self.orm.session.query(User).filter(
-                    (User.username == username) | (User.username == email) | (User.email == email) | (User.email == username)
-                ).first()
+                existing_user = (
+                    self.session.query(User)
+                    .filter(
+                        (User.username == username)
+                        | (User.username == email)
+                        | (User.email == email)
+                        | (User.email == username)
+                    )
+                    .first()
+                )
             except SQLAlchemyError as e:
                 return self._handle_error(f"Failed to retrieve existing users: {str(e)}")
         else:
@@ -63,7 +71,7 @@ class UserManager(Manager):
         if existing_user:
             return False, None, "Username or email is already in use."
         try:
-            user = self.orm.add_user(username, password, email, default_preset, preferences)
+            user = self.orm_add_user(username, password, email, default_preset, preferences)
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to add user: {str(e)}")
         return True, user, "User successfully registered."
@@ -80,8 +88,8 @@ class UserManager(Manager):
         # Update the last login time
         user.last_login_time = datetime.datetime.utcnow()
         try:
-            self.orm.session.commit()
-            self.orm.session.refresh(user)
+            self.session.commit()
+            self.session.refresh(user)
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to log in user: {str(e)}")
         return True, user, "Login successful."
@@ -92,7 +100,7 @@ class UserManager(Manager):
 
     def get_users(self, limit=None, offset=None):
         try:
-            users = self.orm.get_users(limit, offset)
+            users = self.orm_get_users(limit, offset)
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to get users: {str(e)}")
         return True, users, "Users retrieved."
@@ -111,20 +119,20 @@ class UserManager(Manager):
                 return success, existing_user, message
             if existing_user and existing_user.id != user.id:
                 return False, user, "Username cannot be the same as an existing user's email."
-            kwargs['username'] = username
+            kwargs["username"] = username
         if email:
             success, existing_user, message = self.get_by_username_or_email(email)
             if not success:
                 return success, existing_user, message
             if existing_user and existing_user.id != user.id:
                 return False, user, "Email cannot be the same as an existing user's username."
-            kwargs['email'] = email
+            kwargs["email"] = email
         if password:
-            kwargs['password'] = self._hash_password(password)
+            kwargs["password"] = self._hash_password(password)
         if default_preset is not None:
-            kwargs['default_preset'] = default_preset
+            kwargs["default_preset"] = default_preset
         try:
-            user = self.orm.edit_user(user, **kwargs)
+            user = self.orm_edit_user(user, **kwargs)
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to edit user: {str(e)}")
         return True, user, "User successfully edited."
@@ -136,7 +144,7 @@ class UserManager(Manager):
         if not user:
             return False, None, "User not found."
         try:
-            user = self.orm.delete_user(user)
+            user = self.orm_delete_user(user)
         except SQLAlchemyError as e:
             return self._handle_error(f"Failed to delete user: {str(e)}")
         return True, user, "User successfully deleted."

@@ -1,7 +1,8 @@
 ---
-description: AI assists the user in writing a high-level specification for an Ansible playbook
+description: AI assists the user in writing an Ansible playbook
 request_overrides:
   preset: gpt-4-code-generation
+  activate_preset: true
   system_message: |-
     ## MAIN PURPOSE
 
@@ -33,11 +34,21 @@ request_overrides:
             required: false
             default: None
             type: str
+        preset_overrides:
+            description: A dictionary of metadata and model customization overrides to apply to the preset when running the template.
+            required: false
+            default: None
+            type: dict
         system_message:
             description: The LWE system message to use, either an alias or custom message.
             required: false
             default: None
             type: str
+        max_submission_tokens:
+            description: The maximum number of tokens that can be submitted. Default is max for the model.
+            required: false
+            default: None
+            type: int
         template:
             description: An LWE template to use for constructing the prompt.
             required: true if message not provided
@@ -72,6 +83,7 @@ request_overrides:
     - name: Start conversation
       lwe_llm:
         message: "What are the three primary colors?"
+        max_submission_tokens: 512
         # User ID or username
         user: 1
         register: result
@@ -91,12 +103,19 @@ request_overrides:
             foo: bar
             baz: bang
 
-    # Use the 'test' profile, and a pre-configured provider/model preset 'mypreset'
+    # Use the 'test' profile, a pre-configured provider/model preset 'mypreset',
+    # and override some of the preset configuration.
     - name: Continue conversation
       lwe_llm:
         message: "Say three things about bacon"
+        system_message: "You are a bacon connoisseur"
         profile: test
         preset: mypreset
+        preset_overrides:
+            metadata:
+                return_on_function_call: true
+            model_customizations:
+                temperature: 1
 
     RETURN:
 
@@ -250,7 +269,7 @@ request_overrides:
 
     As a chatbot, here is a set of guidelines you should abide by.
 
-    Ask Questions: Do not hesitate to ask clarifying or leading questions if the specification does not provide enough detail to write the playbook. In particular, ask clarifying questions if you need more information to write tasks related to the previously documented custom modules. In order to maximize helpfulness, you should only ask high value questions to needed to complete the task of writing the playbook -- if you have no questions, just generate the playbook.
+    Ask Questions: Do not hesitate to ask clarifying or leading questions if the specification does not provide enough detail to write the playbook. In particular, ask clarifying questions if you need more information to write tasks related to the previously documented custom modules. In order to maximize helpfulness, you should only ask high value questions needed to complete the task of writing the playbook -- if you have no questions, just generate the playbook.
 
     Output format: After you have received answers to any necessary questions, output ONLY the playbook code, no other text or explanation.
 ---

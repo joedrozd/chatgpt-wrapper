@@ -23,12 +23,20 @@ Run the program with the ``config`` argument:
 
    lwe config
 
+You can also view just a portion of the config by providing a filter argument.
+
+To view just the file/directory config:
+
+.. code-block:: bash
+
+   lwe config files
+
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 From a running instance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: bash
+.. code-block:: console
 
    /config
 
@@ -42,7 +50,7 @@ This will show all the current configuration settings, the most important ones f
 From a running instance, you can also view just a portion of the configuration by providing a
 filter argument:
 
-.. code-block:: bash
+.. code-block:: console
 
    /config model
 
@@ -76,7 +84,9 @@ Editing the configuration for the current profile
 1. Start the program: ``lwe``
 2. Open the profile's configuration file in an editor: ``/config edit``
 3. Edit file to taste and save
-4. Restart the program
+
+Most configuration options will be reloaded dynamically after the configuration file is saved,
+otherwise a restart of the program is required.
 
 -----------------------------------------------
 Configuring model properties
@@ -84,7 +94,7 @@ Configuring model properties
 
 To change the properties of a particular LLM model, use the ``/model`` command:
 
-.. code-block:: bash
+.. code-block:: console
 
    /model model_name gpt-3.5-turbo
    /model temperature 1.0
@@ -95,5 +105,3 @@ The ``/model`` command works within the models of the currently loaded :ref:`pro
 document. While some attributes can be displayed via command completion in the
 shell, you are advised to consult the API documentation for the specific provider
 for a full list of available attributes and their values.*
-
-

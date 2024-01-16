@@ -13,7 +13,7 @@ Create an instance of the class and use the ``ask`` method to send a message to 
    from lwe import ApiBackend
 
    bot = ApiBackend()
-   success, response, message = bot.ask("Hello, world!")
+   success, response, message = bot.ask("Say hello!")
    if success:
        print(response)
    else:
@@ -34,15 +34,32 @@ To pass custom configuration to the ``ApiBackend``, use the ``Config`` class:
 
    config = Config()
    config.set('debug.log.enabled', True)
-   # You may also stream the response as it comes in from the API by
-   # setting the model.streaming attribute.
-   config.set('model.streaming', True)
    bot = ApiBackend(config)
-   success, response, message = bot.ask("Hello, world!")
+   success, response, message = bot.ask("Say hello!")
    if success:
        print(response)
    else:
        raise RuntimeError(message)
+
+To stream a response:
+
+#. Define a callback function to receive streaming chunks
+#. Define a ``request_overrides`` dict, passing the defined callback in the ``stream_callback`` key
+#. Pass ``request_overrides`` as an argument to the ``ask_stream`` method
+
+
+.. code-block:: python
+
+  from lwe import ApiBackend
+
+  def stream_callback(content):
+      print(content, end='', flush=True)
+
+  bot = ApiBackend()
+  request_overrides = {
+      'stream_callback': stream_callback
+  }
+  success, response, message = bot.ask_stream("Say three words about earth", request_overrides=request_overrides)
 
 
 -----------------------------------------------
@@ -62,3 +79,21 @@ The code below uses the system-defined ``gpt-4-chatbot-responses`` preset:
    config.set('model.default_preset', 'gpt-4-chatbot-responses')
    bot = ApiBackend(config)
    success, response, message = bot.ask("Hello, world!")
+
+
+-----------------------------------------------
+Advanced Python module usage
+-----------------------------------------------
+
+The ``ApiBackend`` class has full access to most of the features available in the LWE shell:
+
+* Templates
+* Presets
+* Workflows
+* OpenAI functions
+* etc...
+
+If you're a moderately skilled Python programmer, you should be able to figure out how to
+make use of these features using the ``ApiBackend`` class by looking at the
+:ref:`core shell module <lwe.core.repl module>` and :ref:`API shell module <lwe.backends.api.repl module>` code,
+or examining the documentation for :ref:`ApiBackend <lwe.backends.api.backend module>`.

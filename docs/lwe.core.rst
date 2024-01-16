@@ -4,14 +4,6 @@ lwe.core Package
 lwe.core Submodules
 -------------------
 
-lwe.core.backend module
------------------------
-
-.. automodule:: lwe.core.backend
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 lwe.core.config module
 ----------------------
 
@@ -56,6 +48,14 @@ lwe.core.function module
 ------------------------
 
 .. automodule:: lwe.core.function
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+lwe.core.function\_cache module
+-------------------------------
+
+.. automodule:: lwe.core.function_cache
    :members:
    :undoc-members:
    :show-inheritance:
@@ -132,10 +132,18 @@ lwe.core.repl module
    :undoc-members:
    :show-inheritance:
 
-lwe.core.template module
-------------------------
+lwe.core.template\_manager module
+---------------------------------
 
-.. automodule:: lwe.core.template
+.. automodule:: lwe.core.template_manager
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+lwe.core.token\_manager module
+------------------------------
+
+.. automodule:: lwe.core.token_manager
    :members:
    :undoc-members:
    :show-inheritance:

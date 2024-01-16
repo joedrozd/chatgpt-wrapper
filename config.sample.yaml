@@ -9,11 +9,22 @@
 ##########################################################
 # Backend settings.
 ##########################################################
-# The backend the shell should use, one of: browser, api
+# The backend the shell should use. For now, this should always be: api
 backend: api
+# Additional options to pass to the backend.
+backend_options:
+  # If set to a string, and no users currently exist in the database,
+  # a user will be created with this name and no password or email.
+  auto_create_first_user: None
+  # Load this user when bootstrapping the backend. Can be user_id or username.
+  default_user: None
+  # Load this conversation when bootstrapping the backend. Must be an existing conversation id.
+  default_conversation_id: None
+
 # The database connection string, in a format SQLAlchemy understands.
 # DO NOT USE THE LINE AS IT IS WRITTEN BELOW, IT ONLY ILLUSTRATES THE DEFAULT LOCATION.
 # database: sqlite:////home/[username]/.local/share/llm-workflow-engine/profiles/default/storage.db
+
 
 
 ##########################################################
@@ -36,7 +47,6 @@ directories:
     # New templates created in the CLI are saved to the first directory in the list.
     - $CONFIG_DIR/profiles/$PROFILE/templates
     - $CONFIG_DIR/templates
-  # NOTE: This setting is only available on the following backends: api
   presets:
     - $CONFIG_DIR/presets
     # New presets created in the CLI are saved to the last directory in the list.
@@ -44,7 +54,6 @@ directories:
   plugins:
     - $CONFIG_DIR/profiles/$PROFILE/plugins
     - $CONFIG_DIR/plugins
-  # NOTE: This setting is only available on the following backends: api
   workflows:
     - $CONFIG_DIR/workflows
     # New workflows created in the CLI are saved to the last directory in the list.
@@ -55,7 +64,6 @@ directories:
 # Shell settings.
 ##########################################################
 shell:
-  # NOTE: This setting is only available on the following backends: api
   # Customize the prompt prefix, the following token are available:
   # - $SYSTEM_MESSAGE_ALIAS: The current your system message alias
   # - $USER: Logged in username
@@ -69,17 +77,6 @@ shell:
   # Full path to the file that stores a history of commands in the shell.
   # Set to false to disable storing history.
   history_file: /tmp/repl_history.log
-
-
-##########################################################
-# Browser settings.
-##########################################################
-# NOTE: These settings only work on the following backends: browser
-browser:
-  # Enable debug mode (shows browser window if true, headless if false)
-  debug: false
-  # The browser to use, one of: firefox, chromium, webkit
-  provider: firefox
 
 
 ##########################################################
@@ -98,7 +95,6 @@ model:
   # disabled otherwise.
   streaming: true
   # Configure aliases to switch between system messages, key is alias, value is message.
-  # NOTE: This setting only works on the following backend: api
   # NOTE: This setting is only active for chat models.
   # See '/help system_message' for more information.
   system_message:
@@ -137,6 +133,7 @@ plugins:
   enabled:
     # Core plugins, see README for more details.
     - echo
+    - examples
     #- awesome
     #- database
     #- data_query

@@ -1,33 +1,54 @@
 import os
+import copy
 import yaml
 import platform
 
 import lwe.core.constants as constants
 import lwe.core.util as util
 
+
 class Config:
-    def __init__(self, config_dir=None, data_dir=None, profile=constants.DEFAULT_PROFILE, config=None, args=None):
+    def __init__(
+        self,
+        config_dir=None,
+        data_dir=None,
+        profile=constants.DEFAULT_PROFILE,
+        config=None,
+        args=None,
+    ):
         config = config or {}
         self.args = args or util.NoneAttrs()
         self.system = platform.system()
         self.profile = profile
-        self.config = self._merge_configs(constants.DEFAULT_CONFIG, config)
+        self.default_config = copy.deepcopy(constants.DEFAULT_CONFIG)
+        self.config = self._merge_configs(self.default_config, config)
         self.config_file = None
         if config_dir:
             if not os.path.exists(config_dir):
-                raise FileNotFoundError(f"The config directory '{config_dir}' does not exist.")
+                raise FileNotFoundError(f"The config directory {config_dir!r} does not exist.")
             self.config_dir = config_dir
         else:
             self.config_dir = self._default_config_dir()
         self.config_profile_dir = self.make_profile_dir(self.config_dir, self.profile)
         if data_dir:
             if not os.path.exists(data_dir):
-                raise FileNotFoundError(f"The data directory '{data_dir}' does not exist.")
+                raise FileNotFoundError(f"The data directory {data_dir!r} does not exist.")
             self.data_dir = data_dir
         else:
             self.data_dir = self._default_data_dir()
         self.data_profile_dir = self.make_profile_dir(self.data_dir, self.profile)
         self._transform_config()
+
+    @property
+    def properties(self):
+        return [
+            "config_dir",
+            "config_file",
+            "config_profile_dir",
+            "data_dir",
+            "data_profile_dir",
+            "system",
+        ]
 
     def _default_config_dir(self):
         if self.system == "Windows":
@@ -40,7 +61,10 @@ class Config:
         legacy_config_dir = os.path.join(base_path, constants.LEGACY_DEFAULT_CONFIG_DIR)
         if os.path.exists(legacy_config_dir):
             util.print_status_message(False, f"Using legacy config directory: {legacy_config_dir}")
-            util.print_status_message(False, f"To dismiss this warning, move your configuration to the new default directory: {config_dir}")
+            util.print_status_message(
+                False,
+                f"To dismiss this warning, move your configuration to the new default directory: {config_dir}",
+            )
             return legacy_config_dir
         if not os.path.exists(config_dir):
             os.makedirs(config_dir)
@@ -55,7 +79,10 @@ class Config:
         legacy_data_dir = os.path.join(base_path, constants.LEGACY_DEFAULT_CONFIG_DIR)
         if os.path.exists(legacy_data_dir):
             util.print_status_message(False, f"Using legacy data directory: {legacy_data_dir}")
-            util.print_status_message(False, f"To dismiss this warning, move your data to the new default directory: {data_dir}")
+            util.print_status_message(
+                False,
+                f"To dismiss this warning, move your data to the new default directory: {data_dir}",
+            )
             return legacy_data_dir
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
@@ -73,17 +100,24 @@ class Config:
         try:
             with open(self.config_file, "r") as f:
                 config = yaml.safe_load(f) or {}
-            self.config = self._merge_configs(constants.DEFAULT_CONFIG, config)
+            self.config = self._merge_configs(self.default_config, config)
         except FileNotFoundError:
-            self.config = constants.DEFAULT_CONFIG
+            self.config = self.default_config
         self._transform_config()
 
     def _transform_config(self):
-        self.set('log.console.level', self.get('log.console.level').upper(), False)
-        self.set('debug.log.level', self.get('debug.log.level').upper(), False)
-        if not self.get('database'):
-            self.set('database', "sqlite:///%s/%s.db" % (self.data_profile_dir, constants.DEFAULT_DATABASE_BASENAME), False)
-        for setting, paths in self.get('directories').items():
+        self.set("log.console.level", self.get("log.console.level").upper(), False)
+        self.set("debug.log.level", self.get("debug.log.level").upper(), False)
+        database_setting = self.get("database")
+        if database_setting:
+            database = util.filepath_replacements(database_setting, self)
+        else:
+            database = "sqlite:///%s/%s.db" % (
+                self.data_profile_dir,
+                constants.DEFAULT_DATABASE_BASENAME,
+            )
+        self.set("database", database, False)
+        for setting, paths in self.get("directories").items():
             adjusted_paths = [util.filepath_replacements(path, self) for path in paths]
             self.set(f"directories.{setting}", adjusted_paths, False)
 
