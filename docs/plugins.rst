@@ -46,6 +46,22 @@ Enable the plugin in your configuration:
 Note that setting ``plugins.enabled`` will overwrite the default enabled plugins. Use the ``/plugins`` command for a list of currently enabled plugins.
 
 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Reloading plugins
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To dynamically reload a plugin:
+
+.. code-block:: sh
+
+   /plugin reload [plugin_name]
+
+Reloading a plugin will also clear the main cache file for the plugin -- as some provider plugins cache data on current models, this command can be used to refresh the available models for the provider. For example:
+
+.. code-block:: sh
+
+   /plugin reload provider_chat_fireworks
+
 -----------------------------------------------
 Core plugins
 -----------------------------------------------
@@ -54,6 +70,7 @@ These plugins are built into LWE core:
 
 * **echo:** Simple echo plugin, echos back the text you give it
 * **examples:** Easily install example configuration files (see :ref:`Installing examples`)
+* **provider_chat_openai_compat:** Allows access to third-party providers that offer an OpenAI compatible API.
 
 They can be disabled by removing them from ``plugins.enabled`` in your configuration file.
 
@@ -115,20 +132,26 @@ Supported providers
    https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-anyscale
 * **provider_chat_cohere:** Access to `Cohere <https://docs.cohere.com/docs/models>`_ chat models
    https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-cohere
+* **provider_chat_fireworks:** Access to `Fireworks <https://fireworks.ai/models>`_ chat models.
+   https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-fireworks
 * **provider_chat_google_genai:** Access to `Google GenAI <https://ai.google.dev/models>`_ chat models.
    https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-google-genai
+* **provider_chat_groq:** Access to `Groq <https://console.groq.com/docs/models>`_ chat models.
+   https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-groq
 * **provider_chat_mistralai:** Access to `MistralAI <https://docs.mistral.ai>`_ chat models
    https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-mistralai
 * **provider_chat_ollama:** Access to `Ollama <https://ollama.ai/library>`_ chat models
    https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-ollama
+* **provider_chat_together:** Access to `Together <https://api.together.xyz/models>`_ chat models
+   https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-together
 * **provider_chat_vertexai:** Access to `Google Vertex AI <https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models>`_ chat models.
    https://github.com/llm-workflow-engine/lwe-plugin-provider-chat-vertexai
-* **provider_cohere:** Access to `Cohere <https://docs.cohere.com/docs/models>`_ models
-   https://github.com/llm-workflow-engine/lwe-plugin-provider-cohere
 * **provider_huggingface_hub:** Access to `Hugging Face Hub <https://huggingface.co/models>`_ models
    https://github.com/llm-workflow-engine/lwe-plugin-provider-huggingface-hub
 * **provider_openai:** Access to non-chat `OpenAI <https://platform.openai.com/docs/models)>`_ models (GPT-3, etc.)
    https://github.com/llm-workflow-engine/lwe-plugin-provider-openai
+* **provider_openrouter:** Access to `OpenRouter <https://openrouter.ai/models)>`_ models
+   https://github.com/llm-workflow-engine/lwe-plugin-provider-openrouter
 * **provider_vertexai:** Access to `Google Vertex AI <https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models>`_ text/code models.
    https://github.com/llm-workflow-engine/lwe-plugin-provider-vertexai
 

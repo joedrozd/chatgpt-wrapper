@@ -1,20 +1,29 @@
 import os
 import importlib.util
-import pkg_resources
+import importlib.metadata
 
 from lwe.core.config import Config
 from lwe.core.logger import Logger
+from lwe.core.cache_manager import CacheManager
 import lwe.core.util as util
 
 PLUGIN_PREFIX = "lwe_"
 
 
 class PluginManager:
-    def __init__(self, config=None, backend=None, search_path=None, additional_plugins=None):
+    def __init__(
+        self,
+        config=None,
+        backend=None,
+        cache_manager=None,
+        search_path=None,
+        additional_plugins=None,
+    ):
         additional_plugins = additional_plugins or []
         self.config = config or Config()
         self.log = Logger(self.__class__.__name__, self.config)
         self.backend = backend
+        self.cache_manager = cache_manager or CacheManager(self.config)
         self.search_path = search_path if search_path else self.get_default_plugin_paths()
         self.plugins = {}
         self.package_plugins = {}
@@ -24,7 +33,7 @@ class PluginManager:
 
     def get_default_plugin_paths(self):
         user_plugin_dirs = (
-            self.config.args.plugin_dir
+            self.config.args.plugins_dir
             or util.get_environment_variable_list("plugin_dir")
             or self.config.get("directories.plugins")
         )
@@ -36,9 +45,23 @@ class PluginManager:
         return plugin_paths
 
     def inject_plugin(self, plugin_name, plugin_class):
-        plugin_instance = plugin_class(self.config)
+        plugin_instance = plugin_class(self.config, cache_manager=self.cache_manager)
         self.setup_plugin(plugin_name, plugin_instance)
         self.plugins[plugin_name] = plugin_instance
+
+    def reload_plugin(self, plugin_name):
+        if plugin_name in self.plugin_list:
+            plugin_instance = self.load_plugin(plugin_name)
+            if plugin_instance is not None:
+                self.plugins[plugin_name] = plugin_instance
+                message = f"Plugin {plugin_name} reloaded successfully"
+                self.log.info(message)
+                return True, plugin_instance, message
+            return False, None, f"Failed to reload plugin {plugin_name}"
+        else:
+            message = f"Plugin {plugin_name} not found in plugin list"
+            self.log.error(message)
+            return False, None, message
 
     def load_plugins(self, plugin_list):
         for plugin_name in plugin_list:
@@ -60,16 +83,25 @@ class PluginManager:
 
     def load_package_plugins(self, plugin_list):
         self.log.info("Scanning for package plugins")
-        entry_point_group = "%splugins" % PLUGIN_PREFIX
-        for entry_point in pkg_resources.iter_entry_points(group=entry_point_group):
-            package_name = entry_point.dist.project_name
-            plugin_name = util.dash_to_underscore(package_name[len("%splugin_" % PLUGIN_PREFIX) :])
+        entry_point_group = f"{PLUGIN_PREFIX}plugins"
+        try:
+            entry_points = importlib.metadata.entry_points().select(group=entry_point_group)
+        except AttributeError:
+            # TODO: Python 3.9 compatibility, remove when we drop support for 3.9.
+            entry_points = importlib.metadata.entry_points().get(entry_point_group, [])
+        for entry_point in entry_points:
+            try:
+                package_name = entry_point.dist.metadata["Name"]
+            except AttributeError:
+                # TODO: Python 3.9 compatibility, remove when we drop support for 3.9.
+                package_name = entry_point.name
+            plugin_name = util.dash_to_underscore(package_name[len(f"{PLUGIN_PREFIX}plugin_") :])
             if plugin_name in plugin_list:
                 try:
                     klass = entry_point.load()
-                    plugin_instance = klass(self.config)
+                    plugin_instance = klass(self.config, cache_manager=self.cache_manager)
                     self.log.info(
-                        f"Loaded plugin: {entry_point.name},  from package: {package_name}"
+                        f"Loaded plugin: {entry_point.name}, from package: {package_name}"
                     )
                     self.package_plugins[plugin_name] = plugin_instance
                 except Exception as e:
@@ -106,7 +138,7 @@ class PluginManager:
                     spec.loader.exec_module(module)
                     plugin_class_name = util.snake_to_class(plugin_name)
                     plugin_class = getattr(module, plugin_class_name)
-                    plugin_instance = plugin_class(self.config)
+                    plugin_instance = plugin_class(self.config, cache_manager=self.cache_manager)
                     break
                 except Exception as e:
                     self.log.error(f"Error loading plugin {plugin_name} from {plugin_file}: {e}")

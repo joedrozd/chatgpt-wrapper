@@ -1,7 +1,11 @@
+<<<<<<< HEAD:lwe/examples/functions/reverse_content.py
 from chatgpt_wrapper.core.function import Function
+=======
+from lwe.core.tool import Tool
+>>>>>>> 2fed83cbae5504ac804d96aa11c51033d3f0028a:lwe/examples/tools/reverse_content.py
 
 
-class ReverseContent(Function):
+class ReverseContent(Tool):
     def __call__(self, content: str) -> dict:
         """
         Reverse the provided content

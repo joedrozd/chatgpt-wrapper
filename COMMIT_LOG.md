@@ -1,3 +1,266 @@
+### v0.22.0 - 09/25/2024
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+Provider plugins and their dependencies listed in `requirements.txt` should be upgraded when upgrading to this version.
+
+#### Commit log
+
+* **Wed Sep 25 2024:** bump langchain requirements to 0.3.x versions
+* **Tue Sep 24 2024:** handle special case: some LLM classes return an unset key for a nested config by default, pass through
+
+### v0.21.1 - 09/23/2024
+
+* **Mon Sep 23 2024:** support for OpenAI o1-mini/o1-preview
+* **Mon Sep 02 2024:** improvements to file summarizer workflow
+  - separate preset for title extraction
+  - fix paper/question workflow to be more model agnostic
+  - add URL to file summary if it exists
+  - format summary file as markdown
+  - upload summary file contents as Gist if GITHUB_GIST_ACCESS_TOKEN env var is set
+  - output Gist URL if Gist is created
+  - extract temp dir via Python (platform-agnostic)
+* **Mon Sep 02 2024:** add gpt-4o built-in preset
+
+### v0.21.0 - 08/28/2024
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+The OpenAI support library that LWE uses changed how it validates some custom parameters passed to the OpenAI API.
+
+New installs should not be affected by this, but existing installs may need to repair any created presets for the OpenAI provider.
+
+Example presets installed via the `examples` plugin can simply re-install those examples:
+
+```
+/examples presets
+```
+
+Hand created OpenAI presets will need to move most of the parameters under `model_kwargs` into the top level of the configuration, e.g.:
+
+```yaml
+# Old
+model_customizations:
+  model_kwargs:
+    top_p: 0.1
+  model_name: gpt-3.5-turbo
+  temperature: 0.2
+```
+
+```yaml
+# New
+model_customizations:
+  model_name: gpt-3.5-turbo
+  top_p: 0.1
+  temperature: 0.2
+```
+
+#### Commit log
+
+* **Wed Aug 28 2024:** fix presets/examples/doc for openai param refactor
+* **Wed Aug 28 2024:** fix location of openai customizations, bump openai lib requirement
+* **Fri Aug 16 2024:** remove all deprecation warnings for function -> tool migration
+* **Thu Aug 08 2024:** add gpt-4o-2024-08-06 model to chat_openai provider
+
+### v0.20.2 - 07/25/2024
+
+* **Thu Jul 25 2024:** fix #347: broken plugin package handling in Python 3.9
+* **Thu Jul 18 2024:** add gpt-4o-mini models
+
+### v0.20.1 - 07/13/2024
+
+* **Sat Jul 13 2024:** fix tests function -> tool_calls data structure change
+* **Sat Jul 13 2024:** bump required langchain version to 0.2.7
+* **Sat Jul 13 2024:** use configured provider customizations instead of reloading preset customizations.
+* **Tue Jul 09 2024:** add more help doc for /preset save action
+* **Tue Jul 09 2024:** fix #322 Add support for max_submission_tokens to presets
+* **Sat Jul 06 2024:** remove old Cohere provider plugin
+
+### v0.20.0 - 06/25/2024
+
+This release introduces support for data caching, including data caching for plugins.
+
+Some provider plugins now cache their available models after retrieving the data via an API call.
+
+Plugins can now be reloaded using the `/plugin reload [plugin_name]` command. For provider plugins that cache available models, this will update the available models to the latest ones available via the API.
+
+If `backend_options.title_generation.provider` is being used for a custom title provider, the new `backend_options.title_generation.model` configuration option will allow selecting the provider model as well.
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+The plugin caching/reloading functionality required a refactor of some plugin architecture -- make sure to update to the latest code for all plugins at the same time as the update to this release.
+
+#### Commit log
+
+* **Tue Jun 25 2024:** formatting cleanup
+* **Tue Jun 25 2024:** add doc for reloading plugins
+* **Tue Jun 25 2024:** add help for reloading plugins
+* **Tue Jun 25 2024:** clear cache when reloading plugin
+* **Mon Jun 24 2024:** fallback on non-standard response object
+* **Mon Jun 24 2024:** standardize provider data caching, overriding provider settings in config
+* **Mon Jun 24 2024:** add cache_delete method to CacheManager
+* **Sun Jun 23 2024:** add /plugin command, plugin reload API
+* **Sun Jun 23 2024:** fix docstring
+* **Sun Jun 23 2024:** fix user help doc
+* **Sun Jun 23 2024:** simple cache manager, expose to plugins
+* **Sat Jun 22 2024:** add backend_options.title_generation.model
+* **Sat Jun 22 2024:** log full LLM response object
+* **Sat Jun 22 2024:** update FakeMessagesListChatModel to match latest in PR
+* **Fri Jun 07 2024:** more robust cleanup of tool definitions, by dereferencing
+* **Fri Jun 07 2024:** add debug log for non-streaming LLM attributes
+* **Thu Jun 06 2024:** formatting cleanup
+* **Thu Jun 06 2024:** use full template env in build_message_from_template()
+* **Thu Jun 06 2024:** gpt-4o -> gpt-4-turbo for coding preset As evidenced by https://scale.com/leaderboard/coding and personal use, gpt-4o is worse at coding than gpt-4-turbo at this time.
+* **Mon Jun 03 2024:** fix provider set_value() to support defaults explicitly set to None
+
+### v0.19.3 - 06/02/2024
+
+* **Sun Jun 02 2024:** fix spelling error
+* **Sun Jun 02 2024:** fix missing langchain-community requirement
+
+### v0.19.2 - 06/01/2024
+
+* **Sat Jun 01 2024:** migrate to langchain 0.2.x
+* **Fri May 24 2024:** clean exit on Ctrl+c/Ctrl+d
+* **Fri May 24 2024:** add doc for lwe-plugin-provider-chat-together
+* **Fri May 24 2024:** add core plugin: provider_chat_openai_compat Allows access to third-party providers that offer an OpenAI compatible API.
+* **Mon May 20 2024:** syntax cleanup
+* **Mon May 20 2024:** cleanup tool definitions, add debug traceback
+* **Mon May 20 2024:** add debug property to Config class
+* **Sun May 19 2024:** EXPERIMENTAL: lwe_command Ansible module, allows executing REPL commands via workflows
+* **Sun May 19 2024:** fix doc build warning
+* **Sun May 19 2024:** split execution of REPL commands into execution and output methods
+* **Sun May 19 2024:** add support for async compat
+* **Sun May 19 2024:** fix broken tests
+
+### v0.19.1 - 05/19/2024
+
+* **Sun May 19 2024:** formatting cleanup
+* **Sun May 19 2024:** better formatting for config section outputs in CLI
+* **Sun May 19 2024:** hack to support tool calling for providers that are not correctly supuporting AIMessage.tool_calls property when building messages
+* **Sun May 19 2024:** remove call to dead compact_tools() method
+* **Sun May 19 2024:** tweak test prompt
+* **Sun May 19 2024:** fix bad location of 'required' parameter in openai tool spec
+* **Sat May 18 2024:** tests on python 3.12
+* **Sat May 18 2024:** rename file to avoid test suite runs
+* **Sat May 18 2024:** formatting cleanup
+* **Sat May 18 2024:** add black to dev deps
+* **Sat May 18 2024:** fix bad variable name
+* **Sat May 18 2024:** add flake8 to dev deps
+
+### v0.19.0 - 05/18/2024
+
+This release migrates from the legacy OpenAI function calling to general tool calling.
+
+Any provider that also has Langchain tool integration should now be able to use a standardized tool calling interface.
+
+#### **:fire_engine:Breaking Changes:fire_engine:**
+
+* The configuration of 'functions' in presets has changed to a 'tools' configuration, see https://github.com/llm-workflow-engine/llm-workflow-engine/issues/345 for migration instructions.
+* Provider.display_name is now a property instead of a method
+
+#### Deprecations
+
+The following are deprecated, and will be removed in a future release:
+
+* '/functions' CLI command is now '/tools'
+* Environment variable 'LWE_FUNCTION_DIR' has been renamed to 'LWE_TOOL_DIR'
+* Configuration variable 'directories.functions' has been renamed to 'directories.tools'
+
+#### Major fixes
+
+* Refactored OpenAI function calling to general tool use
+* Add gpt-4o model, use as default
+* Add support for passing message list to make_request() Enables Python module usage to pass a string (one user message), or a list of messages
+* Bump textract rev to support python 3.12
+  * NOTE: Existing installs will need to force reinstall the textract package for this upgrade, as it is a git install:
+    * `pip install --force-reinstall textract@git+https://github.com/thehunmonkgroup/textract@2109f34b4f3615004de1f2b2e635cfd61dae3cb7`
+* Support custom title in lwe_llm Ansible module
+* Fixed broken command line args for --template-dir, --preset-dir, --plugin-dir, --workflow-dir, function-dir
+  * Renamed to --templates-dir, --presets-dir, --plugins-dir, --workflows-dir, --tools-dir
+* More robust message type detection for display in CLI
+* Add optional transform_tool() method to base Provider class
+
+#### Commit log
+
+* **Sat May 18 2024:** add optional transform_tool() method to base Provider class
+* **Sat May 18 2024:** add func_to_json_schema_spec placeholder function
+* **Sat May 18 2024:** script for quickly checking tool calling across providers
+* **Sat May 18 2024:** tweak request unit tests
+* **Sat May 18 2024:** pretty up upgrade output
+* **Sat May 18 2024:** kill dead code
+* **Sat May 18 2024:** add deprecation warnings for /functions -> /tools CLI command
+* **Sat May 18 2024:** deprecation warning for directories.functions config option
+* **Sat May 18 2024:** make tool config change in presets a breaking change
+* **Sat May 18 2024:** remove unneeded metadata arg
+* **Sat May 18 2024:** more robust message type detection for display in CLI
+* **Sat May 18 2024:** clarify tool summary in doc
+* **Sat May 18 2024:** upgrade request unit tests for tools
+* **Sat May 18 2024:** fix broken util tests
+* **Sat May 18 2024:** remove dead test code
+* **Sat May 18 2024:** fix arg order
+* **Sat May 18 2024:** tweak docs for tool use
+* **Fri May 17 2024:** upgrade unit tests for request/token_manager/tool_cache/util for tool upgrade
+* **Fri May 17 2024:** upgrade system tests for tools
+* **Fri May 17 2024:** upgrade request integration tests for tools
+* **Fri May 17 2024:** remove dead code
+* **Fri May 17 2024:** clean up token counting calculation
+* **Fri May 17 2024:** fix broken check for forced tool calls
+* **Fri May 17 2024:** fix example workflow for new tools config
+* **Fri May 17 2024:** more robust handling of user metadata fields
+* **Fri May 17 2024:** fix streaming for tool calls
+* **Fri May 17 2024:** clean out private customization keys before building LLM class
+* **Fri May 17 2024:** abstract selection of title generation provider and llm
+* **Fri May 17 2024:** abstract transform of AIMessage messages
+* **Fri May 17 2024:** get tool call working in non-streaming case
+* **Thu May 16 2024:** tool call submission working, return broken
+* **Thu May 16 2024:** fix/rename broken CLI args
+* **Thu May 16 2024:** schema upgrade code
+* **Thu May 16 2024:** starting tool refactor, mostly renaming
+* **Wed May 15 2024:** fix fake_llm plugin to support latest arg structure
+* **Wed May 15 2024:** bump textract rev to support python 3.12
+* **Mon May 13 2024:** add function docstring
+* **Mon May 13 2024:** add gpt-4o model, use as default
+* **Fri May 10 2024:** add support for passing message list to make_request() Enables Python module usage to pass a string (one user message), or a list of messages
+* **Fri May 10 2024:** add build_message_from_template() support function to backend
+* **Fri May 03 2024:** add doc for Fireworks chat provider plugin
+* **Tue Apr 30 2024:** clarify file-summarizer new features in comments
+* **Tue Apr 30 2024:** improvements to file-summarizer workflow
+* **Tue Apr 30 2024:** support custom title in lwe_llm Ansible module
+
+### v0.18.11 - 04/26/2024
+
+* **Fri Apr 26 2024:** pass missing config object during title generation
+* **Fri Apr 26 2024:** add doc for backend_options.title_generation.provider
+* **Thu Apr 25 2024:** fix broken request class unit tests
+* **Thu Apr 25 2024:** improve check for custom provider in request logic
+* **Sat Apr 20 2024:** add doc for openrouter provider plugin
+* **Sat Apr 20 2024:** fix for Python 3.9 compat
+* **Sat Apr 20 2024:** update chat_openai provider args
+
+### v0.18.10 - 04/20/2024
+
+* **Sat Apr 20 2024:** migrate from pkg_resources to importlib.metadata
+* **Sat Apr 20 2024:** add [dev] extra for development packages
+* **Mon Apr 15 2024:** add link to chat groq provider plugin
+* **Tue Apr 09 2024:** add latest gpt-4-turbo models to available models list
+* **Tue Apr 09 2024:** switch to newest gpt-4-turbo
+* **Thu Mar 14 2024:** add get_raw_template(), use in template edit/run
+* **Thu Feb 08 2024:** check for full path in windows editor env var, more robust line splitting from where call
+* **Thu Feb 08 2024:** fix #340: fix langchain deprecation warning
+* **Thu Feb 08 2024:** add openai_api_base config option to chat_openai provider
+* **Thu Feb 08 2024:** switch to gpt-3.5-turbo for default model
+
+### v0.18.9 - 02/08/2024
+
+* **Thu Feb 08 2024:** enhance file-summarizer workflow, larger character limit for paper, add a fourth question
+* **Thu Feb 08 2024:** adjust presets for new OpenAI models
+* **Thu Feb 08 2024:** add gpt-4-0125-preview, gpt-4-turbo-preview, gpt-3.5-turbo-0125 models
+* **Wed Feb 07 2024:** sync with patched FakeMessagesListChatModel langchain class
+* **Tue Jan 16 2024:** Fix 404 link in templates.rst - "example templates"
+* **Mon Jan 08 2024:** fix commit log link
+* **Mon Jan 08 2024:** clean up formatting and date format
+
 ### v0.18.8 - 01/08/2024
 
 * **Mon Jan 08 2024:** fix bad reference to langchain tools

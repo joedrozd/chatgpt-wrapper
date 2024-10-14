@@ -1,4 +1,5 @@
 import re
+import json
 import textwrap
 import yaml
 import os
@@ -71,7 +72,6 @@ class Repl:
     def initialize_repl(self, config=None):
         self.config = config or Config()
         self.log = Logger(self.__class__.__name__, self.config)
-        self.debug = self.config.get("log.console.level").lower() == "debug"
         self._set_logging()
 
     def reload_repl(self):
@@ -143,6 +143,9 @@ class Repl:
         template_completions = util.list_to_completion_hash(self.backend.template_manager.templates)
         commands_with_leader[util.command_with_leader("template")] = {
             c: template_completions for c in self.get_command_actions("template", dashed=True)
+        }
+        commands_with_leader[util.command_with_leader("plugin")] = {
+            "reload": util.list_to_completion_hash(self.backend.plugin_manager.plugin_list)
         }
         self.base_shell_completions = commands_with_leader
 
@@ -511,9 +514,11 @@ class Repl:
                             h["created_time"].strftime("%Y-%m-%d %H:%M"),
                             h["title"] or constants.NO_TITLE_TEXT,
                             h["id"],
-                            f" {constants.ACTIVE_ITEM_INDICATOR}"
-                            if h["id"] == self.backend.conversation_id
-                            else "",
+                            (
+                                f" {constants.ACTIVE_ITEM_INDICATOR}"
+                                if h["id"] == self.backend.conversation_id
+                                else ""
+                            ),
                         )
                         for h in history_list
                     ]
@@ -703,7 +708,11 @@ class Repl:
                     print("\n")
                     style = "bold red3" if part["role"] == "user" else "bold green3"
                     util.print_markdown(part["display_role"], style=style)
-                    util.print_markdown(part["message"])
+                    if type(part["message"]) is dict or type(part["message"]) is list:
+                        message = f"```json\n{json.dumps(part['message'], indent=2)}\n```"
+                    else:
+                        message = part["message"]
+                    util.print_markdown(message)
             else:
                 return False, conversation_data, "Could not load chat content"
         else:
@@ -779,6 +788,15 @@ class Repl:
         """
         return self.default(input)
 
+    # TODO: Remove this when o1 models support system messages.
+    def is_openai_o1_series(self):
+        if self.backend.provider.name == "provider_chat_openai":
+            customizations = self.backend.provider.get_customizations()
+            model_name = customizations.pop(self.backend.provider.model_property_name, "unknown")
+            if model_name.startswith("o1-"):
+                return True
+        return False
+
     def default(self, input, request_overrides=None):
         # TODO: This signal is recognized on Windows, and calls the callback, but the entire
         # process is still killed.
@@ -787,7 +805,10 @@ class Repl:
             return
 
         request_overrides = request_overrides or {}
-        if self.stream:
+        # TODO: Remove this when o1 models support streaming.
+        if self.stream and not self.is_openai_o1_series():
+        # TODO: Enable this when o1 models support streaming
+        # if self.stream:
             request_overrides["print_stream"] = True
             print("")
             success, response, user_message = self.backend.ask_stream(
@@ -967,14 +988,14 @@ class Repl:
         else:
             customizations = self.backend.provider.get_customizations()
             model_name = customizations.pop(self.backend.provider.model_property_name, "unknown")
-            provider_name = self.backend.provider.display_name()
             customizations_data = (
                 "\n\n```yaml\n%s\n```" % yaml.dump(customizations, default_flow_style=False)
                 if customizations
                 else ""
             )
             util.print_markdown(
-                "## Provider: %s, model: %s%s" % (provider_name, model_name, customizations_data)
+                "## Provider: %s, model: %s%s"
+                % (self.backend.provider.display_name, model_name, customizations_data)
             )
 
     def command_templates(self, arg):
@@ -1175,7 +1196,7 @@ class Repl:
         :param template_name: The name of the template.
         :type template_name: str
         """
-        success, template_content, user_message = self.backend.template_manager.render_template(
+        success, template_content, user_message = self.backend.template_manager.get_raw_template(
             template_name
         )
         if not success:
@@ -1205,6 +1226,33 @@ class Repl:
         substitutions = self.collect_template_variable_values(template_name, variables)
         template_content = template.render(**substitutions)
         return self.edit_run_template(template_content)
+
+    def command_plugin(self, args):
+        """
+        Perform operations on plugins.
+
+        Arguments:
+            action: The action to perform. One of: reload
+            target: The target for the action.
+
+        Examples:
+            {COMMAND} reload echo
+            {COMMAND} reload provider_chat_openai
+        """
+        return self.dispatch_command_action("plugin", args)
+
+    def action_plugin_reload(self, plugin_name):
+        if plugin_name not in self.backend.plugin_manager.plugins:
+            return (
+                False,
+                plugin_name,
+                f"Plugin {plugin_name} not found in list of installed plugins",
+            )
+        plugin_instance = self.backend.plugin_manager.plugins[plugin_name]
+        self.backend.cache_manager.cache_delete(plugin_instance.plugin_cache_filename)
+        result = self.backend.reload_plugin(plugin_name)
+        self.rebuild_completions()
+        return result
 
     def command_plugins(self, arg):
         """
@@ -1254,13 +1302,15 @@ class Repl:
 * **Data dir:** %s
 * **Data profile dir:** %s
 * **Database:** %s
+* **Cache dirs:**
+%s
 * **Template dirs:**
 %s
 * **Preset dirs:**
 %s
 * **Workflow dirs:**
 %s
-* **Function dirs:**
+* **Tool dirs:**
 %s
 """ % (
             self.config.config_dir,
@@ -1269,14 +1319,19 @@ class Repl:
             self.config.data_dir,
             self.config.data_profile_dir,
             self.config.get("database"),
+            util.list_to_markdown_list(self.backend.cache_manager.cache_dirs),
             util.list_to_markdown_list(self.backend.template_manager.user_template_dirs),
             util.list_to_markdown_list(self.backend.preset_manager.user_preset_dirs),
-            util.list_to_markdown_list(self.backend.workflow_manager.user_workflow_dirs)
-            if getattr(self.backend, "workflow_manager", None)
-            else "",
-            util.list_to_markdown_list(self.backend.function_manager.user_function_dirs)
-            if getattr(self.backend, "function_manager", None)
-            else "",
+            (
+                util.list_to_markdown_list(self.backend.workflow_manager.user_workflow_dirs)
+                if getattr(self.backend, "workflow_manager", None)
+                else ""
+            ),
+            (
+                util.list_to_markdown_list(self.backend.tool_manager.user_tool_dirs)
+                if getattr(self.backend, "tool_manager", None)
+                else ""
+            ),
         )
         util.print_markdown(output)
 
@@ -1315,7 +1370,7 @@ class Repl:
         output = """
 # Configuration section '%s':
 
-```
+```yaml
 %s
 ```
 """ % (
@@ -1399,35 +1454,43 @@ class Repl:
                 return method, plugin
         raise AttributeError(f"{method_string} method not found in any shell class")
 
-    def run_command(self, command, argument):
+    def run_command_get_response(self, command, argument):
         command = util.dash_to_underscore(command)
+        if command in self.commands:
+            method, obj = self.get_command_method(command)
+            try:
+                response = method(obj, argument)
+                return True, response
+            except Exception as e:
+                return False, e
+        return False, f"Unknown command: {command}"
+
+    def run_command(self, command, argument):
         if command == "help":
             self.help(argument)
         else:
-            if command in self.commands:
-                method, obj = self.get_command_method(command)
-                try:
-                    response = method(obj, argument)
-                except Exception as e:
-                    print(repr(e))
-                    if self.debug:
-                        traceback.print_exc()
-                else:
-                    util.output_response(response)
+            success, response = self.run_command_get_response(command, argument)
+            if success:
+                util.output_response(response)
             else:
-                print(f"Unknown command: {command}")
+                print(repr(response))
+                if self.config.debug:
+                    traceback.print_exc()
 
     def cmdloop(self):
         print("")
         util.print_markdown("### %s" % self.intro)
         while True:
             self.set_user_prompt()
-            user_input = self.prompt_session.prompt(
-                self.prompt,
-                completer=self.command_completer,
-                complete_style=CompleteStyle.MULTI_COLUMN,
-                reserve_space_for_menu=3,
-            )
+            try:
+                user_input = self.prompt_session.prompt(
+                    self.prompt,
+                    completer=self.command_completer,
+                    complete_style=CompleteStyle.MULTI_COLUMN,
+                    reserve_space_for_menu=3,
+                )
+            except (KeyboardInterrupt, EOFError):
+                break
             try:
                 command, argument = util.parse_shell_input(user_input)
             except NoInputError:

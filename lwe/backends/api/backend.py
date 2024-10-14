@@ -4,11 +4,12 @@ from lwe.core.config import Config
 from lwe.core.logger import Logger
 from lwe.backends.api.database import Database
 from lwe.backends.api.orm import Orm, User
+from lwe.core.cache_manager import CacheManager
 from lwe.core.template_manager import TemplateManager
 from lwe.core.preset_manager import PresetManager
 from lwe.core.provider_manager import ProviderManager
 from lwe.core.workflow_manager import WorkflowManager
-from lwe.core.function_manager import FunctionManager
+from lwe.core.tool_manager import ToolManager
 from lwe.core.plugin_manager import PluginManager
 import lwe.core.constants as constants
 import lwe.core.util as util
@@ -104,14 +105,14 @@ class ApiBackend:
         response = self.make_request(message, **overrides)
         return response
 
-    def run_template(self, template_name, template_vars=None, overrides=None):
+    def build_message_from_template(self, template_name, template_vars=None, overrides=None):
         """
-        Runs the given template with the provided variables and overrides.
+        Builds the message from the template.
 
         :param template_name: Name of the template to run.
-        :param template_vars: Optional dictionary of template variables, will merged with any set in the template.
-        :param overrides: Optional dictionary of overrides, will be merged with any set in the template.
-        :return: The response tuple from the template run.
+        :param template_vars: Optional dictionary of template variables.
+        :param overrides: Optional dictionary of overrides.
+        :return: A tuple containing a success indicator, tuple of built message and overrides, and a user message.
         """
         template_vars = template_vars or {}
         overrides = overrides or {}
@@ -129,7 +130,24 @@ class ApiBackend:
             return success, response, user_message
         message, template_overrides = response
         util.merge_dicts(template_overrides, overrides)
-        response = self.run_template_compiled(message, template_overrides)
+        return True, (message, template_overrides), f"Built message from template: {template_name}"
+
+    def run_template(self, template_name, template_vars=None, overrides=None):
+        """
+        Runs the given template with the provided variables and overrides.
+
+        :param template_name: Name of the template to run.
+        :param template_vars: Optional dictionary of template variables, will merged with any set in the template.
+        :param overrides: Optional dictionary of overrides, will be merged with any set in the template.
+        :return: The response tuple from the template run.
+        """
+        success, response, user_message = self.build_message_from_template(
+            template_name, template_vars=template_vars, overrides=overrides
+        )
+        if not success:
+            return success, response, user_message
+        message, overrides = response
+        response = self.run_template_compiled(message, overrides)
         return response
 
     def initialize_backend(self, config=None):
@@ -148,14 +166,15 @@ class ApiBackend:
         self.provider = None
         self.message_clipboard = None
         self.return_only = False
+        self.cache_manager = CacheManager(self.config)
         self.template_manager = TemplateManager(self.config)
         self.preset_manager = PresetManager(self.config)
         self.plugin_manager = PluginManager(
-            self.config, self, additional_plugins=ADDITIONAL_PLUGINS
+            self.config, self, self.cache_manager, additional_plugins=ADDITIONAL_PLUGINS
         )
         self.provider_manager = ProviderManager(self.config, self.plugin_manager)
         self.workflow_manager = WorkflowManager(self.config)
-        self.function_manager = FunctionManager(self.config)
+        self.tool_manager = ToolManager(self.config)
         self.workflow_manager.load_workflows()
         self.init_provider()
         self.set_available_models()
@@ -306,18 +325,9 @@ class ApiBackend:
             self.set_max_submission_tokens()
         return success, customizations, user_message
 
-    def compact_functions(self, customizations):
-        """Compact expanded functions to just their name."""
-        if "model_kwargs" in customizations and "functions" in customizations["model_kwargs"]:
-            customizations["model_kwargs"]["functions"] = [
-                f["name"] for f in customizations["model_kwargs"]["functions"]
-            ]
-        return customizations
-
     def make_preset(self):
         """Make preset from current provider customizations."""
         metadata, customizations = parse_llm_dict(self.provider.customizations)
-        customizations = self.compact_functions(customizations)
         return metadata, customizations
 
     def activate_preset(self, preset_name):
@@ -343,7 +353,20 @@ class ApiBackend:
             self.active_preset_name = preset_name
             if "system_message" in metadata:
                 self.set_system_message(metadata["system_message"])
+            if "max_submission_tokens" in metadata:
+                self.set_max_submission_tokens(metadata["max_submission_tokens"])
         return success, preset, user_message
+
+    def reload_plugin(self, plugin_name):
+        """
+        Reload a plugin.
+
+        :param plugin_name: Name of plugin
+        :type plugin_name: str
+        :returns: success, plugin_instance, message
+        :rtype: tuple
+        """
+        return self.plugin_manager.reload_plugin(plugin_name)
 
     def _handle_response(self, success, obj, message):
         """
@@ -433,7 +456,7 @@ class ApiBackend:
             self.init_provider()
         conversation_storage_manager = ConversationStorageManager(
             self.config,
-            self.function_manager,
+            self.tool_manager,
             self.current_user,
             self.conversation_id,
             self.provider,
@@ -662,8 +685,8 @@ class ApiBackend:
         """
         Ask the LLM a question, return and optionally stream a response.
 
-        :param input: The input to be sent to the LLM.
-        :type input: str
+        :param input: The input to be sent to the LLM, can be a string for a single user message, or a list of message dicts with 'role' and 'content' keys.
+        :type input: str | list
         :request_overrides: Overrides for this specific request.
         :type request_overrides: dict, optional
         :returns: success, LLM response, message
@@ -685,7 +708,7 @@ class ApiBackend:
             self.config,
             self.provider,
             self.provider_manager,
-            self.function_manager,
+            self.tool_manager,
             input,
             self.active_preset,
             self.preset_manager,
@@ -700,12 +723,16 @@ class ApiBackend:
         new_messages, messages = request.prepare_ask_request()
         success, response_obj, user_message = request.call_llm(messages)
         if success:
+            response_data = (
+                vars(response_obj) if hasattr(response_obj, "__dict__") else f"{response_obj}"
+            )
+            self.log.debug(f"LLM Response: {response_data}")
             response_content, new_messages = request.post_response(response_obj, new_messages)
             self.message_clipboard = response_content
             title = request_overrides.get("title")
             conversation_storage_manager = ConversationStorageManager(
                 self.config,
-                self.function_manager,
+                self.tool_manager,
                 self.current_user,
                 self.conversation_id,
                 request.provider,
